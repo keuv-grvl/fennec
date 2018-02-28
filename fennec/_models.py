@@ -266,3 +266,149 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
         X = X.fillna(0)
         return(X)
 
+
+#-------------------------------------------------------------------------------
+
+
+def get_ind_profiles(seq, K=15):
+    '''
+    doi: 10.1016/j.physa.2017.04.064
+
+    2.1. Inter-nucleotide distance in a DNA sequence
+    '''
+    import itertools
+    import numpy as np
+
+    # convert 'ATGC' sequences to '0123' sequences
+    n2i = { "A":0, "T":1, "G":2, "C":3 }
+    seqi = []
+    for s in seq:
+        try:
+            seqi.append(n2i[s])
+        except:
+            seqi.append(None)
+
+    lastPos = np.zeros(len(n2i), dtype=int)  # last position of nucleotide
+    save = np.empty((len(n2i), len(n2i)), object)  # should I calculate the distance?
+    count = np.zeros((len(n2i), len(n2i)), dtype=bool)  # distance between 2 nucl
+    cpt = 0
+
+    for c in seqi:
+        if c is None:  # if not ATGC (mostly N)
+            cpt += 1
+            continue
+        for e in n2i.values():
+            if c is None or e is None:
+                continue
+            if count[e][c]:
+                if save[e][c] is None:
+                    save[e][c] = []
+                save[e][c].append( cpt - int(lastPos[e]) )
+                count[e][c] = False
+            count[c][e] = True
+        lastPos[c] = cpt
+        cpt += 1
+
+    f0 = np.zeros((len(n2i), len(n2i), K), float)
+
+    for a,b,k in itertools.product(n2i, n2i, range(K)):
+        if save[n2i[a]][n2i[b]] is None:
+            f0[ n2i[a] ][ n2i[b] ][k] = 0
+        else:
+            f0[ n2i[a] ][ n2i[b] ][k] = \
+                save[n2i[a]][n2i[b]].count(k+1) / len(save[n2i[a]][n2i[b]]) 
+
+    return f0.reshape(f0.size)
+
+
+def get_nearest_dissimilar_distance(seq, K=15):
+    '''
+    doi: 10.1016/j.physa.2017.04.064
+
+    2.1. Inter-nucleotide distance in a DNA sequence
+    '''
+    import itertools
+    import numpy as np
+
+    nucl = ("A", "T", "G", "C")
+    W = dict.fromkeys(nucl)
+    i = 0
+    l = 1
+
+    while i in range(len(seq) - 1):
+        if not seq[i] in nucl:
+            i+=1
+            continue
+        if seq[i] != seq[i+1]:
+            try:
+                W[ seq[i] ].append(l)
+            except:
+                W[ seq[i] ] = []
+                W[ seq[i] ].append(l)
+            l = 1
+        else:
+            l += 1
+        i += 1
+
+    W[seq[i]].append(1)  # count last nucleotide as 1
+    f1 = np.empty((len(nucl), K), float)
+
+    for a, k in itertools.product(nucl, range(K)):
+        f1[ nucl.index(a) ][k] = W[a].count(k+1) / len(W[a])
+
+    return f1.reshape(f1.size)
+
+
+def inter_nucleotide_distance_profile(kargs):
+    (sid, seq), K = kargs
+    import numpy as np
+    f0 = get_ind_profiles(seq, K=K)
+    f1 = get_nearest_dissimilar_distance(seq, K=K)
+    X = np.concatenate( [f1, f0] )
+    return (sid, X)
+
+
+
+class InterNucleotideDistanceModel(BaseEstimator, TransformerMixin):
+    '''
+    DOI: 10.1016/j.physa.2017.04.064
+    '''
+    def __init__(self, K=15, verbose=0, n_jobs=1):
+        self.K = K
+        self.verbose = verbose
+        self.n_jobs = n_jobs
+        self.inter_nucleotide_distance_profile = inter_nucleotide_distance_profile
+
+    def fit(self, X):
+        return self
+
+    def transform(self, X):
+        import itertools
+        import time
+        import pandas as pd
+        from multiprocessing import Pool
+        if self.verbose >= 1:
+            print("[INFO] Extracting IND profiles")
+        p = Pool(self.n_jobs)
+        result = p.map_async(self.inter_nucleotide_distance_profile,
+            zip (list(X.items()), itertools.cycle( (self.K,) )))
+        maxjob = result._number_left
+
+        if self.verbose >= 2:
+            while not result.ready():
+                _print_progressbar(maxjob - result._number_left, maxjob,
+                    msg="Characterizing sequences")
+                time.sleep(0.5)
+            _print_progressbar(maxjob - result._number_left, maxjob,
+                msg="Characterizing sequences")
+            print()
+        else:
+            result.wait()
+
+        p.terminate()
+        # tmpDict = {}
+        # for sid, vec in result.get():
+        #     tmpDict[sid] = vec
+        tmpDict = { k:v for k,v in result.get() }
+        return pd.DataFrame(data=tmpDict).T
+
