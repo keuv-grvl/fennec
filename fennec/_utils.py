@@ -98,6 +98,140 @@ def run_prodigal(
             if verbose >= 2:
                 print()
             return p.returncode
+
+    return -1
+
+
+
+def run_fraggenescan(
+        execpath,
+        inputfile,
+        outputfile="tmp.fraggenescan.gff",
+        force=False,
+        verbose=0,
+        n_jobs=1,
+    ):
+    '''
+    Predict genes from `inputfile` (FASTA format) using FragGeneScan.
+
+    Returns the FragGeneScan return code, or -1 if `outputfile` already exists.
+
+
+    Parameters
+    ----------
+
+    execpath: str
+        Path of the 'run_FragGeneScan.pl' script.
+
+    inputfile: str
+        Fasta file to predict genes from.
+
+    outputfile: str (default: "tmp.fraggenescan.gff")
+        Name of the GFF output file.
+
+    force: bool (default: False)
+        Choose to run FragGeneScan or not if `outputfile` already exists.
+
+    verbose: int (default: 0)
+        Verbosity level.
+
+    n_jobs: int (default: 1)
+        Number of CPU FragGeneScan will use.
+
+    '''
+    import os
+    import subprocess
+
+    outputlabel = os.path.splitext(outputfile)[0]
+    if force or not os.path.isfile(outputfile):
+        cmd=[execpath,
+            '-genome='+str(inputfile),
+            '-out='+str(outputlabel),
+            '-thread='+str(n_jobs),
+            '-complete=1', '-train=complete' ]
+        if verbose >= 1:
+            print("[INFO] Predicting genes with FragGeneScan")
+            print("[INFO] Running '%s'" % (" ".join(cmd)))
+        res=subprocess.run(cmd)
+        return res.returncode
+
+    return -1
+
+
+
+def run_metageneannotator(
+        execpath,
+        inputfile,
+        outputfile="tmp.metageneannotator.gff",
+        force=False,
+        verbose=0,
+        n_jobs=1,
+    ):
+    '''
+    Predict genes from `inputfile` (FASTA format) using MetaGeneAnnotator.
+
+    MetaGeneAnnotator does not output a GFF3 file. Thus the output is parsed
+    and formatted to comply with the GFF3 standard.
+
+    Returns the MetaGeneAnnotator return code, or -1 if `outputfile` already exists.
+
+
+    Parameters
+    ----------
+
+    execpath: str
+        Path of the MetaGeneAnnotator executable.
+
+    inputfile: str
+        Fasta file to predict genes from.
+
+    outputfile: str (default: "tmp.metageneannotator.gff")
+        Name of the GFF output file.
+
+    force: bool (default: False)
+        Choose to run MetaGeneAnnotator or not if `outputfile` already exists.
+
+    verbose: int (default: 0)
+        Verbosity level.
+
+    n_jobs: int (default: 1)
+        Ignored.
+    '''
+    import os
+    import subprocess
+    import sys
+    from skbio.io import read as FastaReader
+    if force or not os.path.isfile(outputfile):
+        if verbose >= 1:
+            print("[INFO] Predicting genes with MetaGeneAnnotator")
+        cmd = [execpath, '-m', inputfile]
+        if verbose >= 1:
+            print("[INFO] Running '%s'" % (" ".join(cmd)))
+        nb_seq = sum(1 for x in FastaReader(inputfile, format='fasta', verify=True))
+        i = 0
+        with open(outputfile, "w") as outfile:
+            p = subprocess.Popen(" ".join(cmd), shell=True,
+                stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+            print("##gff-version 3", file=outfile)  # GFF3 header
+            seqid="null"
+            for x in p.stdout:
+                xx = x.decode(sys.getdefaultencoding()).rstrip()
+                if xx.startswith("#"):
+                    if not xx.startswith("# gc") and not xx.startswith("# self"):
+                        seqid=xx[2:]
+                        i += 1
+                        if verbose >= 2:
+                            _print_progressbar(i, nb_seq, msg=seqid)
+                else:
+                    (geneid, start, end, strand, frame, _, score,
+                        _, _, _, _) =  xx.split("\t")
+                    print(seqid, "MGA", "gene", start, end, score, strand, frame, "-", sep="\t", file=outfile)
+            p.wait()
+            p.terminate()
+            if verbose >= 2:
+                print()
+            return p.returncode
+
     return -1
 
 
