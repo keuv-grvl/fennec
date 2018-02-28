@@ -171,9 +171,6 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
         self.verbose = verbose
         self.n_jobs = n_jobs
         # get functions to use with Pool
-        self._BASE_COMPLEMENT = _BASE_COMPLEMENT
-        self._revcomp = _revcomp
-        self._maskify = _maskify
         self._hurricane_death_megatron_300 = _hurricane_death_megatron_300
 
         self._check_masks()
