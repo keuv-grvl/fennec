@@ -1,12 +1,16 @@
 
+from ._utils import DNASequenceBank
+
 from ._models import (
-        DNASequenceBank,
         MaskedKmerModel,
-        InterNucleotideDistanceModel
+        InterNucleotideDistanceModel,
+        CodingDensityModel
     )
 
 __version__ = '0.1-dev'
 __all__ = [
-    'DNASequenceBank',
-    'MaskedKmerModel',
-    'InterNucleotideDistanceModel' ]
+        'DNASequenceBank',
+        'MaskedKmerModel',
+        'InterNucleotideDistanceModel',
+        'CodingDensityModel'
+    ]

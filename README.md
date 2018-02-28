@@ -26,4 +26,6 @@ ind = fennec.InterNucleotideDistanceModel(K=15, n_jobs=160, verbose=2)
 Y = ind.fit(seqdb).transform(seqdb)
 Y.shape
 
+cd = fennec.CodingDensityModel()
+
 ```
