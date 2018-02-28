@@ -196,7 +196,7 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
         from multiprocessing import Pool
 
         if self.verbose >= 1:
-            print("[INFO] Characterizing sequences")
+            print("[INFO] Extracting masked k-mers")
 
         tmpNORM = {}
         p = Pool(self.n_jobs)
@@ -209,13 +209,11 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
                 _print_progressbar(maxjob - result._number_left, maxjob,
                     msg="Characterizing sequences")
                 time.sleep(0.5)
-        else:
-            result.wait()
-
-        if self.verbose >= 2:
             _print_progressbar(maxjob - result._number_left, maxjob,
                 msg="Characterizing sequences")
             print()
+        else:
+            result.wait()
 
         p.terminate()
         #-- aggregate the results
