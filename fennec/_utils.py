@@ -74,10 +74,11 @@ def run_prodigal(
     import sys
     from skbio.io import read as FastaReader
 
+    retcode = -1
     if force or not os.path.isfile(outputfile):
         nb_seq = sum(1 for x in FastaReader(inputfile, format='fasta', verify=True))
         i = 0
-        cmd=[execpath, "-q", "-f gff", "-i", inputfile]
+        cmd = [execpath, "-q", "-f gff", "-i", inputfile]
         if verbose >= 1:
             print("[INFO] Predicting genes with Prodigal")
             print("[INFO] Running '%s'" % (" ".join(cmd)))
@@ -97,9 +98,9 @@ def run_prodigal(
             p.terminate()
             if verbose >= 2:
                 print()
-            return p.returncode
+            retcode = p.returncode
 
-    return -1
+    return (retcode, outputfile)
 
 
 
@@ -142,9 +143,10 @@ def run_fraggenescan(
     import os
     import subprocess
 
+    retcode = -1
     outputlabel = os.path.splitext(outputfile)[0]
     if force or not os.path.isfile(outputfile):
-        cmd=[execpath,
+        cmd = [execpath,
             '-genome='+str(inputfile),
             '-out='+str(outputlabel),
             '-thread='+str(n_jobs),
@@ -152,10 +154,10 @@ def run_fraggenescan(
         if verbose >= 1:
             print("[INFO] Predicting genes with FragGeneScan")
             print("[INFO] Running '%s'" % (" ".join(cmd)))
-        res=subprocess.run(cmd)
-        return res.returncode
+        res = subprocess.run(cmd)
+        retcode = res.returncode
 
-    return -1
+    return (retcode, outputfile)
 
 
 
@@ -201,6 +203,8 @@ def run_metageneannotator(
     import subprocess
     import sys
     from skbio.io import read as FastaReader
+
+    retcode = -1
     if force or not os.path.isfile(outputfile):
         if verbose >= 1:
             print("[INFO] Predicting genes with MetaGeneAnnotator")
@@ -213,12 +217,12 @@ def run_metageneannotator(
             p = subprocess.Popen(" ".join(cmd), shell=True,
                 stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
             print("##gff-version 3", file=outfile)  # GFF3 header
-            seqid="null"
+            seqid = "null"
             for x in p.stdout:
                 xx = x.decode(sys.getdefaultencoding()).rstrip()
                 if xx.startswith("#"):
                     if not xx.startswith("# gc") and not xx.startswith("# self"):
-                        seqid=xx[2:]
+                        seqid = xx[2:]
                         i += 1
                         if verbose >= 2:
                             _print_progressbar(i, nb_seq, msg=seqid)
@@ -230,9 +234,9 @@ def run_metageneannotator(
             p.terminate()
             if verbose >= 2:
                 print()
-            return p.returncode
+            retcode = p.returncode
 
-    return -1
+    return (retcode, outputfile)
 
 
 
