@@ -12,5 +12,6 @@ setup(name='fennec',
       install_requires=[
           'scikit-bio',
           'scikit-learn',
+          'bcbio-gff'
       ],
       zip_safe=False)

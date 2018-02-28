@@ -313,9 +313,26 @@ def inter_nucleotide_distance_profile(kargs):
 
 class InterNucleotideDistanceModel(BaseEstimator, TransformerMixin):
     '''
-    DOI: 10.1016/j.physa.2017.04.064
+    Compute the inter-nucleotide distance profiles as described by Xie et al. (2017)
     '''
     def __init__(self, K=15, verbose=0, n_jobs=1):
+        '''
+        Compute the inter-nucleotide distance profiles as described by
+        Xie et al. (2017) DOI: 10.1016/j.physa.2017.04.064
+
+        Parameters
+        ----------
+            
+        K: int (default: 15)
+            Number of distance to consider.
+
+        verbose:  int
+            Verbosity level.
+
+        n_jobs: int
+            Number of parallel jobs to run for IND profile extraction.
+
+        '''
         self.K = K
         self.verbose = verbose
         self.n_jobs = n_jobs
