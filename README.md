@@ -31,3 +31,24 @@ Z = cd.fit(seqdb).transform(seqdb)
 Z.shape
 
 ```
+
+
+## Dependencies
+
+The Conda environment is provided.
+
+### Python libraries
+
+- scikit-bio
+- bcbio-gff
+- numpy
+- scipy
+- pandas
+- gensim
+
+
+### External software
+
+- Prodigal
+- FragGeneScan
+- [MetaGeneAnnotator](http://metagene.cb.k.u-tokyo.ac.jp/metagene/mga_x86_64.tar.gz)
