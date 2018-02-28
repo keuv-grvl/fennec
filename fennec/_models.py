@@ -371,3 +371,133 @@ class InterNucleotideDistanceModel(BaseEstimator, TransformerMixin):
         tmpDict = { k:v for k,v in result.get() }
         return pd.DataFrame(data=tmpDict).T
 
+
+#-------------------------------------------------------------------------------
+
+class CodingDensityModel:
+    '''
+    Compute coding density.
+    '''
+    def __init__(self, tools=['metageneannotator', 'prodigal', 'fraggenescan'],
+                 tmp_fasta="tmp.fennec.fna", force=False, verbose=0, n_jobs=1):
+        '''
+        Compute coding density.
+
+        Coding density of a sequence is defined as:
+            "number of nucleotide included in CDS / total number of nucleotide"
+
+        Prodigal and FragGeneScan can be located it the PATH. Their respective
+        executables are 'prodigal' and 'run_FragGeneScan.pl'. Both can be
+        installed using Bioconda.
+        Currently, MetaGeneAnnotator must be located at `./bin/mga`.
+
+
+        Parameters
+        ----------
+        
+        tools: list[str] (default: ['metageneannotator', 'prodigal', 'fraggenescan'])
+            List of gene prediction tools to use.
+
+        force: bool (default: False)
+            Force the gene prediciton, even if the resultat are already available
+
+        verbose:  int
+            Verbosity level.
+
+        n_jobs: int
+            Number of parallel jobs to run for some 
+        '''
+        import os
+        import shutil
+        from ._utils import run_prodigal, run_metageneannotator, run_fraggenescan
+
+        self.force = force
+        self.verbose = verbose
+        self.n_jobs = n_jobs
+        self.tmp_fasta = tmp_fasta
+        self._execpaths = {
+            # 'tool identifier', : 'executable path'
+            'metageneannotator': shutil.which('./bin/mga_linux_ia64'),
+            'prodigal':          shutil.which('prodigal'),
+            'fraggenescan':      shutil.which('run_FragGeneScan.pl')
+        }
+        self._execfunctions = {
+            'metageneannotator': run_metageneannotator,
+            'prodigal':          run_prodigal,
+            'fraggenescan':      run_fraggenescan
+        }
+        self._outputs = {
+            'metageneannotator': None,
+            'prodigal': None,
+            'fraggenescan':  None
+        }
+        self.tools = self._check_tools(tools)
+
+    def _check_tools(self, tools):
+        import warnings
+        validated = set()
+        for t in tools:
+            if self._execpaths[t]:
+                validated.add(t)
+            else:
+                warnings.warn("Cannot find '%s'. Will be ignored." % t)
+        return validated
+        
+    def fit(self, X): 
+        '''
+        Run a gene prediction software
+
+        X: DNASequenceBank
+        '''
+        X._save_sequences(self.tmp_fasta)
+
+        for t in self.tools:
+            print("Running %s" % t)
+            (retcode, outputfile) = self._execfunctions[t](
+                    self._execpaths[t], self.tmp_fasta, force=self.force,
+                    verbose=self.verbose, n_jobs=self.n_jobs
+                )
+            self._outputs[t] = outputfile
+
+        # todo: check if output files exist
+        return self
+
+    def transform(self, X):
+        '''
+        Compute coding density
+        '''
+        import subprocess
+        import pandas as pd
+        from BCBio import GFF
+
+        tmpX = []
+        for t in self.tools:
+            if self.verbose >= 1:
+                print("[INFO] Computing coding density from %s" % t)
+
+            if self.verbose >= 2:
+                # get number of sequences in GFF file
+                cmd = 'cat ' + self._outputs[t] + ' | grep -v "^#" | cut -f1 | sort -u | wc -l'
+                nbentry = int(subprocess.Popen(cmd, shell=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0])
+                i = 0
+
+            ftdensity = {}
+            # compute coding density
+            for seq in GFF.parse(self._outputs[t]):  # use GFF3? (https://pypi.python.org/pypi/gff3)
+                if self.verbose >= 2:
+                    i += 1
+                    _print_progressbar(i, nbentry, msg=seq.id)
+                l = len(seq)  # sequence length
+                cl=0  # number of coding nucleotides
+                for f in seq.features:
+                    cl += 1 + abs(f.location.start - f.location.end)
+                ftdensity[seq.id] = cl/l
+
+            if self.verbose >= 2:
+                print()
+
+            tmpX.append( pd.DataFrame(ftdensity, index=["CD_" + t]).T )
+            del ftdensity
+        X = pd.DataFrame().join(tmpX, how='outer')
+        return(X)
