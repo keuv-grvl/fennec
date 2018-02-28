@@ -31,6 +31,77 @@ def _print_progressbar(step, maxi, msg="", char="=", width=50):
         end="\r", flush=True)
 
 
+
+
+def run_prodigal(
+        execpath,
+        inputfile,
+        outputfile="tmp.prodigal.gff",
+        force=False,
+        verbose=0,
+        n_jobs=1,
+    ):
+    '''
+    Predict genes from `inputfile` (FASTA format) using Prodigal.
+
+    Returns the Prodigal return code, or -1 if `outputfile` already exists.
+
+
+    Parameters
+    ----------
+
+    execpath: str
+        Path of the Prodigal executable.
+
+    inputfile: str
+        Fasta file to predict genes from.
+
+    outputfile: str (default: "tmp.prodigal.gff")
+        Name of the GFF output file.
+
+    force: bool (default: False)
+        Choose to run Prodigal or not if `outputfile` already exists.
+
+    verbose: int (default: 0)
+        Verbosity level.
+
+    n_jobs: int (default: 1)
+        Ignored.
+
+    '''
+    import os
+    import subprocess
+    import sys
+    from skbio.io import read as FastaReader
+
+    if force or not os.path.isfile(outputfile):
+        nb_seq = sum(1 for x in FastaReader(inputfile, format='fasta', verify=True))
+        i = 0
+        cmd=[execpath, "-q", "-f gff", "-i", inputfile]
+        if verbose >= 1:
+            print("[INFO] Predicting genes with Prodigal")
+            print("[INFO] Running '%s'" % (" ".join(cmd)))
+        with open(outputfile, "w") as outfile:
+            p = subprocess.Popen(" ".join(cmd), shell=True,
+                stdout=subprocess.PIPE) #, stderr= subprocess.DEVNULL)
+            seqid="NULL"
+            for x in p.stdout:
+                xx = x.decode(sys.getdefaultencoding()).rstrip()
+                print(xx, file=outfile)
+                if xx.startswith("# Sequence Data:"):
+                    seqid=xx.split("\"")[1]
+                    i += 1
+                    if verbose >= 2:
+                        _print_progressbar(i, nb_seq, msg=seqid)
+            p.wait()
+            p.terminate()
+            if verbose >= 2:
+                print()
+            return p.returncode
+    return -1
+
+
+
 #-------------------------------------------------------------------------------
 
 class DNASequenceBank(dict):
