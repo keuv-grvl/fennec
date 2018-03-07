@@ -550,9 +550,15 @@ class Dna2VecModel(BaseEstimator, TransformerMixin):
         plt.show()
 
         '''
+        from glob import glob
+        from os.path import dirname
         self.k = k
         self.modelfile = modelfile
         self.model = None  # word2vec model will be loaded by .fit()
+        self.available_models = {
+                f.split("-")[-1].split('.')[0]: f
+                    for f in glob(dirname(__file__)+"/pretrained/*w2v")
+            }
         self.verbose = verbose
         self.n_jobs = n_jobs
 

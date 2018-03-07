@@ -19,5 +19,6 @@ setup(name='fennec',
         'Programming Language :: Python :: 3',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'Intended Audience :: Science/Research'
-        ]
+        ],
+      include_package_data=True
       )
