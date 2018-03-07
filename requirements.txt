@@ -2,4 +2,5 @@ scikit-bio
 scikit-learn
 bcbio-gff
 numpy
+scipy
 pandas
