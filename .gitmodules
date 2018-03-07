@@ -1,0 +1,3 @@
+[submodule "fennec/_sentence2vec"]
+	path = fennec/_sentence2vec
+	url = https://github.com/keuv-grvl/sentence2vec.git
