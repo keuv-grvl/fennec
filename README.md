@@ -14,9 +14,9 @@ pip install .
 ```python
 import fennec
 fastafile = '/home/prof/gravouil/fennec/sequences/S.Scaffolds.1kb+.split10kb.fasta'
-seqdb = fennec.DNASequenceBank(fastafile, 1000, verbose=2, nb_seq=25)
+seqdb = fennec.DNASequenceBank(fastafile, 1000, verbose=2, nb_seq=2500)
 
-kc = fennec.MaskedKmerModel(masks=["1111", "111", "11", "110011"], n_jobs=160, verbose=2)
+kc = fennec.MaskedKmerModel(masks=["1111"], n_jobs=160, verbose=2)
 X = kc.fit(seqdb).transform(seqdb)
 X = kc.fit_transform(seqdb)
 X.shape
@@ -25,11 +25,14 @@ ind = fennec.InterNucleotideDistanceModel(K=15, n_jobs=160, verbose=2)
 Y = ind.fit(seqdb).transform(seqdb)
 Y.shape
 
-cd = fennec.CodingDensityModel(force=True, verbose=3)
-cd.tools  # list of tools
+cd = fennec.CodingDensityModel(force=True, verbose=2, n_jobs=24)
+cd.tools  # list of tools that will be used
 Z = cd.fit(seqdb).transform(seqdb)
 Z.shape
 
+dv = fennec.Dna2VecModel(verbose=2)
+W = dv.fit(seqdb).transform(seqdb)
+W.shape
 ```
 
 
