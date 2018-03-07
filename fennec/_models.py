@@ -5,7 +5,6 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 from ._utils import _print_progressbar
 
-
 #-------------------------------------------------------------------------------
 
 # Functions called by multiprocessing.Pool().map must be declared out of the class
@@ -374,7 +373,7 @@ class InterNucleotideDistanceModel(BaseEstimator, TransformerMixin):
 
 #-------------------------------------------------------------------------------
 
-class CodingDensityModel:
+class CodingDensityModel(BaseEstimator, TransformerMixin):
     '''
     Compute coding density.
     '''
@@ -445,14 +444,13 @@ class CodingDensityModel:
         
     def fit(self, X): 
         '''
-        Run a gene prediction software
+        Run gene prediction software
 
         X: DNASequenceBank
         '''
         X._save_sequences(self.tmp_fasta)
 
         for t in self.tools:
-            print("Running %s" % t)
             (retcode, outputfile) = self._execfunctions[t](
                     self._execpaths[t], self.tmp_fasta, force=self.force,
                     verbose=self.verbose, n_jobs=self.n_jobs
@@ -499,5 +497,128 @@ class CodingDensityModel:
 
             tmpX.append( pd.DataFrame(ftdensity, index=["CD_" + t]).T )
             del ftdensity
-        X = pd.DataFrame().join(tmpX, how='outer')
+        X = pd.DataFrame().join(tmpX, how='outer').fillna(0)
         return(X)
+
+
+#-------------------------------------------------------------------------------
+
+class Dna2VecModel(BaseEstimator, TransformerMixin):
+    '''
+    Parts of this class are taken from sentence2vec.
+    See: https://github.com/peter3125/sentence2vec
+    '''
+    def __init__(self, k=4,
+        modelfile="pretrained/dna2vec-20180226-1015-k4to4-100d-10c-11693Mbp-sliding-RiD.w2v",
+        verbose=0, n_jobs=1
+        ):
+        '''
+        Extract k-mers from sequences, apply a pretrained Dna2Vec model then model
+        sequences using sentence2vec
+
+        NOTE: Dna2vec produces "legacy" .w2v file. You may want to convert it
+        using:
+            from gensim.models.word2vec import Word2Vec
+            model = Word2Vec.load_word2vec_format("dna2vec.output.legacy-w2v")
+            model.save("dna2vec.output.w2v")
+
+
+        References
+        ----------
+         - https://github.com/pnpnpn/dna2vec
+         - https://github.com/peter3125/sentence2vec
+
+        Parameter
+        ---------
+
+        k: int (defaut: 4)
+            k-mer size
+
+        modelfile: str (default: "pretrained/dna2vec-20180226-1015-k4to4-100d-10c-11693Mbp-sliding-RiD.w2v")
+            Word2vec model file
+
+
+        Example
+        -------
+
+        W = Dna2VecModel().fit_transform(...)
+        kpca = KernelPCA(kernel='cosine')
+        W_kpca = kpca.fit_transform(W)
+        tsne = TSNE(n_components=2, verbose=2, n_iter=1500, n_jobs=160)
+        W_tsne = tsne.fit_transform(W_kpca)
+        plt.scatter(W_tsne[:,0], W_tsne[:,1], s=5)
+        plt.show()
+
+        '''
+        self.k = k
+        self.modelfile = modelfile
+        self.model = None  # word2vec model will be loaded by .fit()
+        self.verbose = verbose
+        self.n_jobs = n_jobs
+
+    def fit(self, X):
+        '''
+        If dna2vec model is not available, train it. Otherwise, just load it.
+
+        Parameter
+        ---------
+
+        X: DNASequenceBank
+        '''
+        from gensim.models import word2vec
+        if self.modelfile:
+            # load the pretrained model
+            if verbose >= 1:
+                print("[INFO] loading model from %s" %(self.modelfile))
+            self.model = word2vec.Word2Vec.load(self.modelfile)
+        else:
+            # not supported yet + it's super long to run!
+            # but we could train on `X` only
+            pass
+        return self
+
+    def transform(self, X):
+        '''
+
+        Parameter
+        ---------
+
+        X: DNASequenceBank
+        '''
+        import pandas as pd
+        from ._sentence2vec.sentence2vec import Word, Sentence, sentence_to_vec
+
+        if not self.model:
+            raise Error("Model has not been loaded")
+
+        sentences = {}
+        step = 0
+
+        if self.verbose >= 1:
+            print("[INFO] Extracting sentences")
+
+        for sid, seq in X.items():
+            if self.verbose >= 2:
+                step += 1
+                _print_progressbar(step, len(X), msg=sid)
+            word_list = []
+            for i in range( len(seq) - self.k + 1 ):
+                km = seq[i:i+self.k]
+                if "N" not in km:
+                    word_list.append( Word(km, self.model[km]) )
+            sentences[sid] = Sentence(word_list)
+
+        if self.verbose >= 2:
+            print()
+
+        # convert Sentence to vector
+        if self.verbose >= 1:
+            print("[INFO] Converting sentences to vectors")
+
+        seqids = list(sentences.keys())
+        vectors = sentence_to_vec(list(sentences.values()), self.model.vector_size)
+        d = dict(zip(seqids, vectors))
+
+        del seqids, vectors
+        W = pd.DataFrame(data=d).T
+        return W

@@ -15,7 +15,8 @@ def _print_progressbar(step, maxi, msg="", char="=", width=50):
     Print a progress bar then place the cursor at the begging of the line.
     Display can be really messy if `maxi` is set incorrectly.
 
-    import timeg    n=32
+    import time
+    n=32
     for i in range(n):
         time.sleep(0.1)
         _print_progressbar(i+1, n, msg="Test", char='=', width=50)
@@ -312,4 +313,3 @@ class DNASequenceBank(dict):
             for sid, seq in self.items():
                 _ = f.write(">" + sid + "\n")
                 _ = f.write(re.sub(r'(.{,80})',r"\1\n", seq))
-
