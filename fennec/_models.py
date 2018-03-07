@@ -82,50 +82,43 @@ def _hurricane_death_megatron_300(kargs):
 
 
 class MaskedKmerModel(BaseEstimator, TransformerMixin):
-    """
-    kc = MaskedKmerModel(["1111"", "110011"], verbose=2, n_jobs=32)
-    X = fit_transform( DNASequencebank(...))
-    """
-    def __init__(self, masks, verbose=0, n_jobs=1):
-        '''Extract k-mer composition from a Fasta file to model a DNASequenceBank.
+    def __init__(self, mask, verbose=0, n_jobs=1):
+        '''Extract (masked) k-mer composition from a DNASequenceBank.
 
         Usual 4-mers are represented by the mask "1111" but you can set
-        spaced-seed (eg: "110011").
+        spaced-seed (eg: "110011"). Mask must validated the regex "^1[01]*?1$".
 
         Parameters
         ----------
         
-        masks: list[str]
-            List of mask to apply (eg: ["111", "1111"]).
+        mask: str
+            List of mask to apply (eg: "111", "1111", "110011").
 
-        verbose:  int
+        verbose:  int (default: 0)
             Verbosity level.
 
-        n_jobs: int
+        n_jobs: int (default: 1)
             Number of parallel jobs to run for Kmer extraction.
 
         '''
         import logging
         self._logger = logging.getLogger(__name__)
         # paramters
-        self.masks = masks
+        self.mask = mask
         self.verbose = verbose
         self.n_jobs = n_jobs
         # get functions to use with Pool
         self._hurricane_death_megatron_300 = _hurricane_death_megatron_300
 
-        self._check_masks()
+        self._check_mask()
 
-    def _check_masks(self):
+    def _check_mask(self):
         '''
-        Check if masks are valid
+        Check if mask is valid
         '''
         import re
-        for m in self.masks:
-            if re.search('[^01]', m):
-                raise ValueError(
-                    "Mask '%s' in [ %s ] is not valid" 
-                    % (m, ', '.join(self.masks)))
+        if not re.search('^1[01]*?1$', self.mask):
+            raise ValueError("Mask '%s' is not valid" % (self.mask))
 
     def fit(self, X):
         return self
@@ -141,7 +134,7 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
 
         tmpNORM = {}
         p = Pool(self.n_jobs)
-        z = itertools.product( list(X.items()), self.masks)
+        z = itertools.product( list(X.items()), self.mask)
         result = p.map_async(self._hurricane_death_megatron_300, z)
         maxjob = result._number_left
 
@@ -155,8 +148,8 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
             print()
         else:
             result.wait()
-
         p.terminate()
+
         #-- aggregate the results
         for (s, m, df) in result.get():
             # print("ft['%s']['%s']=0" % (s, m))
@@ -397,18 +390,23 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
         tools: list[str] (default: ['metageneannotator', 'prodigal', 'fraggenescan'])
             List of gene prediction tools to use.
 
+        tmp_fasta: str (default: "tmp.fennec.fna")
+            File where the DNASequenceBank will be stored (as Fasta)
+
         force: bool (default: False)
             Force the gene prediciton, even if the resultat are already available
 
-        verbose:  int
+        verbose:  int (default: 0)
             Verbosity level.
 
-        n_jobs: int
+        n_jobs: int (default: 1)
             Number of parallel jobs to run for some 
         '''
         import os
-        import shutil
+        from shutil import which
         from ._utils import run_prodigal, run_metageneannotator, run_fraggenescan
+
+        os.environ["PATH"] = os.environ["PATH"] + ":" + os.path.realpath("bin")
 
         self.force = force
         self.verbose = verbose
@@ -416,9 +414,9 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
         self.tmp_fasta = tmp_fasta
         self._execpaths = {
             # 'tool identifier', : 'executable path'
-            'metageneannotator': shutil.which('./bin/mga_linux_ia64'),
-            'prodigal':          shutil.which('prodigal'),
-            'fraggenescan':      shutil.which('run_FragGeneScan.pl')
+            'metageneannotator': which('mga'),
+            'prodigal':          which('prodigal'),
+            'fraggenescan':      which('run_FragGeneScan.pl')
         }
         self._execfunctions = {
             'metageneannotator': run_metageneannotator,
@@ -460,9 +458,11 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
         # todo: check if output files exist
         return self
 
-    def transform(self, X):
+    def transform(self, X=None):
         '''
         Compute coding density
+
+        X: DNASequenceBank, unused
         '''
         import subprocess
         import pandas as pd
@@ -497,8 +497,8 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
 
             tmpX.append( pd.DataFrame(ftdensity, index=["CD_" + t]).T )
             del ftdensity
-        X = pd.DataFrame().join(tmpX, how='outer').fillna(0)
-        return(X)
+        ret = pd.DataFrame().join(tmpX, how='outer').fillna(0)
+        return ret
 
 
 #-------------------------------------------------------------------------------
