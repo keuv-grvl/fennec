@@ -134,7 +134,7 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
 
         tmpNORM = {}
         p = Pool(self.n_jobs)
-        z = itertools.product( list(X.items()), self.mask)
+        z = itertools.product( list(X.items()), (self.mask,))
         result = p.map_async(self._hurricane_death_megatron_300, z)
         maxjob = result._number_left
 
@@ -503,7 +503,7 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
 
 #-------------------------------------------------------------------------------
 
-class Dna2VecModel(BaseEstimator, TransformerMixin):
+class Contig2VecModel(BaseEstimator, TransformerMixin):
     '''
     Parts of this class are taken from sentence2vec.
     See: https://github.com/peter3125/sentence2vec
@@ -514,7 +514,7 @@ class Dna2VecModel(BaseEstimator, TransformerMixin):
         ):
         '''
         Extract k-mers from sequences, apply a pretrained Dna2Vec model then model
-        sequences using sentence2vec
+        sequences using sentence2vec.
 
         NOTE: Dna2vec produces "legacy" .w2v file. You may want to convert it
         using:
@@ -541,7 +541,7 @@ class Dna2VecModel(BaseEstimator, TransformerMixin):
         Example
         -------
 
-        W = Dna2VecModel().fit_transform(...)
+        W = Contig2VecModel().fit_transform(...)
         kpca = KernelPCA(kernel='cosine')
         W_kpca = kpca.fit_transform(W)
         tsne = TSNE(n_components=2, verbose=2, n_iter=1500, n_jobs=160)

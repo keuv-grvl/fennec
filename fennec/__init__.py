@@ -5,7 +5,7 @@ from ._models import (
         MaskedKmerModel,
         InterNucleotideDistanceModel,
         CodingDensityModel,
-        Dna2VecModel
+        Contig2VecModel
     )
 
 from ._sentence2vec.sentence2vec import Word, Sentence, get_word_frequency, sentence_to_vec
@@ -17,5 +17,5 @@ __all__ = [
         'MaskedKmerModel',
         'InterNucleotideDistanceModel',
         'CodingDensityModel',
-        'Dna2VecModel'
+        'Contig2VecModel'
     ]
