@@ -520,13 +520,10 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
 #-------------------------------------------------------------------------------
 
 class Contig2VecModel(BaseEstimator, TransformerMixin):
-    '''
-    Parts of this class are taken from sentence2vec.
-    See: https://github.com/peter3125/sentence2vec
-    '''
     def __init__(self, k=4,
-        modelfile="pretrained/dna2vec-20180226-1015-k4to4-100d-10c-11693Mbp-sliding-RiD.w2v",
-        verbose=0, n_jobs=1
+        modelfile='urq',
+        verbose=0,
+        n_jobs=1
         ):
         '''
         Extract k-mers from sequences, apply a pretrained Dna2Vec model then model
@@ -550,9 +547,15 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         k: int (defaut: 4)
             k-mer size
 
-        modelfile: str (default: "pretrained/dna2vec-20180226-1015-k4to4-100d-10c-11693Mbp-sliding-RiD.w2v")
-            Word2vec model file
+        modelfile: str (default: "urq")
+            Either a pretrained Dna2Vec model label (see self.available_models)
+            or an model file path.
 
+        verbose:  int (default: 0)
+            Verbosity level.
+
+        n_jobs: int (default: 1)
+            Ingored.
 
         Example
         -------
@@ -569,12 +572,14 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         from glob import glob
         from os.path import dirname
         self.k = k
-        self.modelfile = modelfile
-        self.model = None  # word2vec model will be loaded by .fit()
         self.available_models = {
                 f.split("-")[-1].split('.')[0]: f
                     for f in glob(dirname(__file__)+"/pretrained/*w2v")
             }
+        self.modelfile = modelfile
+        if self.modelfile in self.available_models.keys():
+            self.modelfile = self.available_models[self.modelfile]
+        self.model = None  # word2vec model will be loaded by .fit()
         self.verbose = verbose
         self.n_jobs = n_jobs
 
@@ -590,8 +595,8 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         from gensim.models import word2vec
         if self.modelfile:
             # load the pretrained model
-            if verbose >= 1:
-                print("[INFO] loading model from %s" %(self.modelfile))
+            if self.verbose >= 1:
+                print("[INFO] loading model from '%s'" %(self.modelfile))
             self.model = word2vec.Word2Vec.load(self.modelfile)
         else:
             # not supported yet + it's super long to run!
