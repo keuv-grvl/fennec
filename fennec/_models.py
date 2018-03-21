@@ -9,7 +9,16 @@ from ._utils import _print_progressbar
 
 # Functions called by multiprocessing.Pool().map must be declared out of the class
 # See https://stackoverflow.com/questions/32321324/pool-within-a-class-in-python
-_BASE_COMPLEMENT = {"A": "T", "T": "A", "G": "C", "C": "G", "N": "N", "x": "x"}
+
+# src: http://arep.med.harvard.edu/labgc/adnan/projects/Utilities/revcomp.html
+_BASE_COMPLEMENT = {
+    "A": "T", "T": "A", "G": "C", "C": "G",
+    # "Y": "R", "R": "Y", "S": "S", "W": "W", "K": "M", "M": "K",
+    # "B": "V", "D": "H", "H": "D", "V": "B",
+    "Y": "N", "R": "N", "S": "N", "W": "N", "K": "N", "M": "N",
+    "B": "N", "D": "N", "H": "N", "V": "N",
+    "N": "N",
+    "x": "x" }
 
 def _revcomp(dna):
     '''
@@ -82,7 +91,7 @@ def _hurricane_death_megatron_300(kargs):
 
 
 class MaskedKmerModel(BaseEstimator, TransformerMixin):
-    def __init__(self, mask, verbose=0, n_jobs=1):
+    def __init__(self, mask, mode='strict', verbose=0, n_jobs=1):
         '''Extract (masked) k-mer composition from a DNASequenceBank.
 
         Usual 4-mers are represented by the mask "1111" but you can set
@@ -94,6 +103,11 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
         mask: str
             List of mask to apply (eg: "111", "1111", "110011").
 
+        mode: str (default: 'strict')
+            Either 'strict' or 'iupac'. 'strict' will skip non-ATGC kmers while
+            'iupac' will consider all kmers, even if they contain 'N'.
+            Currently, all non ATGC nucleotide will be considered as 'N'
+
         verbose:  int (default: 0)
             Verbosity level.
 
@@ -102,9 +116,12 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
 
         '''
         import logging
-        self._logger = logging.getLogger(__name__)
-        # paramters
+        # parameters
+        if not mode in ['iupac', 'strict']:
+            raise ValueError("mode must be 'strict' or 'iupac'. Given: '%s'" % mode)
+
         self.mask = mask
+        self.mode = mode
         self.verbose = verbose
         self.n_jobs = n_jobs
         # get functions to use with Pool
@@ -130,7 +147,7 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
         from multiprocessing import Pool
 
         if self.verbose >= 1:
-            print("[INFO] Extracting masked k-mers")
+            print("[INFO] Extracting masked k-mers (1/3)")
 
         tmpNORM = {}
         p = Pool(self.n_jobs)
@@ -162,7 +179,7 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
 
         # build index first (AA, AT, AG, AC, ...) to speed up joining
         if self.verbose >= 1:
-            print("[INFO] Building feature index")
+            print("[INFO] Building feature index (2/3)")
 
         idx = set()
         i = 0
@@ -179,7 +196,7 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
 
         #-- merge all compositional feature count into one dataframe
         if self.verbose >= 1:
-            print("[INFO] Joining features")
+            print("[INFO] Joining features (3/3)")
 
         i=0
         lstdt=[]
