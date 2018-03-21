@@ -395,10 +395,9 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
         Coding density of a sequence is defined as:
             "number of nucleotide included in CDS / total number of nucleotide"
 
-        Prodigal and FragGeneScan can be located it the PATH. Their respective
-        executables are 'prodigal' and 'run_FragGeneScan.pl'. Both can be
-        installed using Bioconda.
-        Currently, MetaGeneAnnotator must be located at `./bin/mga`.
+        Software must be located it the PATH. Their respective executables are
+        'prodigal', 'run_FragGeneScan.pl' and 'mga'. Both Prodigal and
+        FragGeneScane can be installed using Bioconda.
 
 
         Parameters
