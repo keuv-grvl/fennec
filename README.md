@@ -4,8 +4,8 @@
 ## Installation
 
 ```bash
-git clone xxx
-cd fennec
+git clone https://github.com/keuv-grvl/fennec.git
+cd fennec/
 pip install .
 ```
 
@@ -16,21 +16,21 @@ import fennec
 fastafile = '/home/prof/gravouil/fennec/sequences/S.Scaffolds.1kb+.split10kb.fasta'
 seqdb = fennec.DNASequenceBank(fastafile, 1000, verbose=2, nb_seq=2500)
 
-kc = fennec.MaskedKmerModel(masks=["1111"], n_jobs=160, verbose=2)
+kc = fennec.MaskedKmerModel(mask="1111", n_jobs=160, verbose=2)
 X = kc.fit(seqdb).transform(seqdb)
-X = kc.fit_transform(seqdb)
 X.shape
 
 ind = fennec.InterNucleotideDistanceModel(K=15, n_jobs=160, verbose=2)
 Y = ind.fit(seqdb).transform(seqdb)
 Y.shape
 
-cd = fennec.CodingDensityModel(force=True, verbose=2, n_jobs=24)
+cd = fennec.CodingDensityModel(force=True, n_jobs=160, verbose=2)
 cd.tools  # list of tools that will be used
 Z = cd.fit(seqdb).transform(seqdb)
 Z.shape
 
-dv = fennec.Dna2VecModel(verbose=2)
+dv = fennec.Contig2VecModel(verbose=2)
+dv.available_models  # list of available models
 W = dv.fit(seqdb).transform(seqdb)
 W.shape
 ```
