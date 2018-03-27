@@ -1,1 +1,1 @@
-include pretrained/*.w2v
+include fennec/pretrained/*.w2v
