@@ -301,7 +301,9 @@ def get_nearest_dissimilar_distance(seq, K=15):
             l += 1
         i += 1
 
-    W[seq[i]].append(1)  # count last nucleotide as 1
+    if seq[i] in nucl:
+        W[seq[i]].append(1)  # count last nucleotide as 1
+    
     f1 = np.empty((len(nucl), K), float)
 
     for a, k in itertools.product(nucl, range(K)):
@@ -629,10 +631,10 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
                 step += 1
                 _print_progressbar(step, len(X), msg=sid)
             word_list = []
-            for i in range( len(seq) - self.k + 1 ):
+            for i in range(len(seq) - self.k + 1):
                 km = seq[i:i+self.k]
                 if "N" not in km:
-                    word_list.append( Word(km, self.model[km]) )
+                    word_list.append(Word(km, self.model[km]))
             sentences[sid] = Sentence(word_list)
 
         if self.verbose >= 2:
