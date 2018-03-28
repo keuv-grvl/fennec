@@ -19,6 +19,10 @@ module1 = Extension(
               libdir+'/lib',
               libdir+'/include'
             ],
+            runtime_library_dirs = [
+              libdir+'/lib',
+              libdir+'/include'
+            ],
             libraries = ['pthread', 'gsl', 'gslcblas'],
             include_dirs = ['c-concoct'],
             sources = ['c-concoct/vbgmmmodule.c'],
