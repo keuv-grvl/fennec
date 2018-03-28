@@ -283,8 +283,8 @@ class DNASequenceBank(dict):
             print("[INFO] Reading input")
         i = 0
         for s in FastaReader(self.fastafile, format='fasta', verify=True):
-            if (len(s) < self.min_length):
-                next
+            if (len(s) <= self.min_length):
+                continue
             i += 1
             sid = s.metadata['id']
             if self.verbose >= 2:
@@ -293,7 +293,7 @@ class DNASequenceBank(dict):
             self[sid] = str(s)
             if i >= self.nb_seq:
                 break
-        if self.verbose >=2:  print()
+        if self.verbose >= 2:  print()
         if self.verbose >= 1:
             print("[INFO] %d sequences loaded" % i)
         # s  = pandas.Series(my_dict,index=my_dict.keys())
