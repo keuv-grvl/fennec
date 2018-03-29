@@ -1,22 +1,10 @@
 import codecs
 import os
 import re
-from distutils.core import Extension, setup
+from setuptools.extension import Extension
+from setuptools import setup
 
-here = os.path.abspath(os.path.dirname(__file__))
-
-def read(*parts):
-    with codecs.open(os.path.join(here, *parts), 'r') as fp:
-        return fp.read()
-
-def find_version(*file_paths):
-    version_file = read(*file_paths)
-    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
-                              version_file, re.M)
-    if version_match:
-        return version_match.group(1)
-    raise RuntimeError("Unable to find version string.")
-
+from fennec import __version__ as VERSION
 
 # Add $CONDA_PREFIX/{lib,include} if we are in a Conda environment
 try:
@@ -47,7 +35,7 @@ module1 = Extension(
           )
 
 setup(name = 'fennec',
-      version = find_version("fennec", "__init__.py"),
+      version = VERSION,
       description = 'DNA sequence modeling for machine learning',
       url = 'https://github.com/keuv-grvl/fennec',
       author = 'Kévin Gravouil',
