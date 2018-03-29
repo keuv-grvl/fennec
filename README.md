@@ -6,7 +6,7 @@
 ```bash
 git clone --recurse-submodules https://github.com/keuv-grvl/fennec.git
 cd fennec/
-for F in $(cat requirements.txt); do pip install $F; done  # install pip dependencies one by one
+pip install numpy  # scikit-bio requires numpy to be already installed
 pip install .
 ```
 
