@@ -4,8 +4,9 @@
 ## Installation
 
 ```bash
-git clone https://github.com/keuv-grvl/fennec.git
+git clone --recurse-submodules https://github.com/keuv-grvl/fennec.git
 cd fennec/
+for F in $(cat requirements.txt); do pip install $F; done  # install pip dependencies one by one
 pip install .
 ```
 
@@ -39,6 +40,11 @@ W.shape
 ## Dependencies
 
 The Conda environment is provided.
+
+### System dependencies
+
+- gcc
+- libgsl-dev
 
 ### Python libraries
 
