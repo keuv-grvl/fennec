@@ -1,6 +1,6 @@
-scikit-bio
-scikit-learn
-bcbio-gff
 numpy
 scipy
 pandas
+scikit-learn
+scikit-bio
+bcbio-gff
