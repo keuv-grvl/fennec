@@ -292,6 +292,8 @@ class DNASequenceBank(dict):
     def _load_sequences(self):
         '''Load sequences longer than `min_length` from a FASTA file to a dict.
         '''
+        from skbio.io import read as FastaReader
+
         if self.verbose >= 1:
             print("[INFO] Reading input")
 
@@ -306,7 +308,7 @@ class DNASequenceBank(dict):
             if self.verbose >= 2:
                 _print_progressbar(i, self.nb_seq, msg=sid)
     
-            self[sid] = self._pattern[self.mode].sub("N", s)
+            self[sid] = self._patterns[self.mode].sub("N", str(s))
             
             if i >= self.nb_seq:
                 break
@@ -314,12 +316,11 @@ class DNASequenceBank(dict):
         if self.verbose >= 2:  print()
         if self.verbose >= 1:
             print("[INFO] %d sequences loaded" % i)
-        # s  = pandas.Series(my_dict,index=my_dict.keys())
 
     def _save_sequences(self, outfile):
         '''Save sequences to a FASTA file.
         One of the valid extensions will be added to `outfile` if not found.
-        If `outfile` already exists, it will be overrided.
+        If `outfile` already exists, it will be overrided without warning.
         '''
         import re
 
