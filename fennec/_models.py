@@ -559,6 +559,26 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
 
 #-------------------------------------------------------------------------------
 
+
+def _get_kmers(seq, k):
+    # kmers_list = []
+    for i in range(0, len(seq) - k + 1):
+        km = seq[i:i+k]
+        if not 'N' in km:
+            # kmers_list.append(km)
+            yield km
+    # return kmers_list
+
+def _get_sentence(kargs):
+    from ._sentence2vec.sentence2vec import Word, Sentence
+    ((sid, seq), k, model) = kargs
+    kmers = _get_kmers(seq, k)
+    vectors = [model(x) for x in kmers]
+    words = [Word(None, v) for v in vectors]
+    s = Sentence(words)
+    return (sid, s)
+
+
 class Contig2VecModel(BaseEstimator, TransformerMixin):
     def __init__(self,
             k=4,
@@ -596,7 +616,7 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
             Verbosity level.
 
         n_jobs: int (default: 1)
-            Ingored.
+            Number of jobs.
 
         Example
         -------
@@ -623,6 +643,8 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         self.model = None  # word2vec model will be loaded by .fit()
         self.verbose = verbose
         self.n_jobs = n_jobs
+        self._get_sentence = _get_sentence
+        # self._word_vec = self.model.wv.word_vec  # shorcut to get vector, 7x faster than `self.model[word]`
 
     def fit(self, X):
         '''
@@ -645,12 +667,6 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
             pass
         return self
 
-    def _get_kmers(self, seq, k):
-        for i in range(0, len(seq) - k + 1):
-            km = seq[i:i+k]
-            if not 'N' in km:
-                yield seq[i:i+k]
-
     def transform(self, X):
         '''
 
@@ -659,24 +675,42 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
 
         X: DNASequenceBank
         '''
+        import itertools
         import pandas as pd
+        from multiprocessing import Pool
+        from time import sleep
         from ._sentence2vec.sentence2vec import Word, Sentence, sentence_to_vec
 
         if not self.model:
             raise Error("Model has not been loaded")
 
-        sentences = {}
-        step = 0
-
         if self.verbose >= 1:
             print("[INFO] Extracting sentences")
 
-        for sid, seq in X.items():
-            if self.verbose >= 2:
-                step += 1
-                _print_progressbar(step, len(X), msg=sid)
-            sentences[sid] = Sentence(
-                [Word(x, self.model[x]) for x in self._get_kmers(seq, self.k)])
+        p = Pool(self.n_jobs)
+        z = zip(X.items(),
+                itertools.repeat(self.k),
+                itertools.repeat(self.model.wv.word_vec)
+                )
+        result = p.map_async(_get_sentence, z)
+
+        maxjob = result._number_left
+
+        if self.verbose >= 2:
+            while not result.ready():
+                _print_progressbar(maxjob - result._number_left, maxjob,
+                    msg="Characterizing sequences")
+                sleep(1)
+            _print_progressbar(maxjob - result._number_left, maxjob,
+                msg="Characterizing sequences")
+            print()
+        else:
+            result.wait()
+        p.terminate()
+
+        sentences = {k:v for k,v in result.get()}
+        del result
+        return sentences
 
         if self.verbose >= 2:
             print()
