@@ -244,8 +244,8 @@ def run_metageneannotator(
 #-------------------------------------------------------------------------------
 
 class DNASequenceBank(dict):
-    '''Store Fasta file as dict {sequence_ID: sequence }'''
-    def __init__(self, fastafile, min_length, nb_seq=0, verbose=0):
+    '''Store Fasta file as dict {sequence_ID: sequence}'''
+    def __init__(self, fastafile, min_length=1000, mode='strict', nb_seq=0, verbose=0):
         '''
         Parameters
         ----------
@@ -253,8 +253,12 @@ class DNASequenceBank(dict):
         fastafile: str
             Path to a Fasta file
 
-        min_length: int
+        min_length: int (default: 1000)
             Minimum sequence length, shorter sequences will be skipped
+
+        mode: str (default: 'strict')
+            Either 'strict' or 'iupac'. 'strict' will replace non-ATGC nucleotides
+            with Ns while 'iupac' will replace non-ATGCYRSWKMBDHVN by Ns
 
         nb_seq: int (default: 0)
             Load the `nb_seq` first sequences, all if 0
@@ -262,37 +266,51 @@ class DNASequenceBank(dict):
         verbose: int (default: 0)
             Verbosity level
         '''
+        import re
+        self._patterns = {
+            "strict": re.compile(r"[^ATGC]", flags=re.IGNORECASE),
+            "iupac": re.compile(r"[^ATGCYRSWKMBDHVN]", flags=re.IGNORECASE)
+        }
+
+        if not mode in self._patterns.keys():
+            raise ValueError("mode must be 'strict' or 'iupac'. Given: '%s'" % mode)
+        
         from skbio.io import read as FastaReader
         self.fastafile = fastafile
         self.min_length = min_length
+        self.mode = mode
         self.verbose = verbose
+
         if nb_seq > 0:
             self.nb_seq = nb_seq
         else:
-            import skbio
             self.nb_seq = sum(
-                    1 for x in FastaReader(self.fastafile, format='fasta')
+                    1 for x in FastaReader(self.fastafile, format='fasta', verify=False)
                 )
         self._load_sequences()
 
     def _load_sequences(self):
         '''Load sequences longer than `min_length` from a FASTA file to a dict.
         '''
-        from skbio.io import read as FastaReader
         if self.verbose >= 1:
             print("[INFO] Reading input")
+
         i = 0
         for s in FastaReader(self.fastafile, format='fasta', verify=True):
             if (len(s) <= self.min_length):
                 continue
+
             i += 1
             sid = s.metadata['id']
+            
             if self.verbose >= 2:
                 _print_progressbar(i, self.nb_seq, msg=sid)
-            # print("%d/2305" % i)
-            self[sid] = str(s)
+    
+            self[sid] = self._pattern[self.mode].sub("N", s)
+            
             if i >= self.nb_seq:
                 break
+
         if self.verbose >= 2:  print()
         if self.verbose >= 1:
             print("[INFO] %d sequences loaded" % i)
@@ -300,7 +318,7 @@ class DNASequenceBank(dict):
 
     def _save_sequences(self, outfile):
         '''Save sequences to a FASTA file.
-        One of the valid extensions will be added to `outfile` i not found.
+        One of the valid extensions will be added to `outfile` if not found.
         If `outfile` already exists, it will be overrided.
         '''
         import re
@@ -309,7 +327,18 @@ class DNASequenceBank(dict):
         if not outfile.split('.')[-1] in extensions:
             outfile += '.fna'
 
+        if self.verbose >= 1:
+            print("[INFO] Writing sequences to '%s'" % outfile)
+
         with open(outfile, "w") as f:
+            i = 0
             for sid, seq in self.items():
+                i += 1
+                if self.verbose >= 2:
+                    _print_progressbar(i, len(self), msg=sid)
                 _ = f.write(">" + sid + "\n")
                 _ = f.write(re.sub(r'(.{,80})',r"\1\n", seq))
+
+        if self.verbose >= 2:  print()
+        if self.verbose >= 1:
+            print("[INFO] %d sequences written to '%s'" % (i, outfile))

@@ -13,10 +13,8 @@ from ._utils import _print_progressbar
 # src: http://arep.med.harvard.edu/labgc/adnan/projects/Utilities/revcomp.html
 _BASE_COMPLEMENT = {
     "A": "T", "T": "A", "G": "C", "C": "G",
-    # "Y": "R", "R": "Y", "S": "S", "W": "W", "K": "M", "M": "K",
-    # "B": "V", "D": "H", "H": "D", "V": "B",
-    "Y": "N", "R": "N", "S": "N", "W": "N", "K": "N", "M": "N",
-    "B": "N", "D": "N", "H": "N", "V": "N",
+    "Y": "R", "R": "Y", "S": "S", "W": "W", "K": "M", "M": "K",
+    "B": "V", "D": "H", "H": "D", "V": "B",
     "N": "N",
     "x": "x" }
 
@@ -151,7 +149,8 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
 
         tmpNORM = {}
         p = Pool(self.n_jobs)
-        z = itertools.product( list(X.items()), (self.mask,))
+        z = itertools.product(list(X.items()), (self.mask,))
+
         result = p.map_async(self._hurricane_death_megatron_300, z)
         maxjob = result._number_left
 
@@ -215,6 +214,7 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
         del tmpNORM # clear old data
         X = X.T
         X = X.fillna(0)
+        
         return(X)
 
 
@@ -522,10 +522,11 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
 #-------------------------------------------------------------------------------
 
 class Contig2VecModel(BaseEstimator, TransformerMixin):
-    def __init__(self, k=4,
-        modelfile='urq',
-        verbose=0,
-        n_jobs=1
+    def __init__(self,
+            k=4,
+            modelfile='urq',
+            verbose=0,
+            n_jobs=1
         ):
         '''
         Extract k-mers from sequences, apply a pretrained Dna2Vec model then model
@@ -651,3 +652,86 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         del seqids, vectors
         W = pd.DataFrame(data=d).T
         return W
+
+
+#-------------------------------------------------------------------------------
+
+class SequenceAbundanceModel(BaseEstimator, TransformerMixin):
+    def __init__(self,
+            abdfiles,
+            verbose=0,
+            n_jobs=1,
+            prefix="cov_"
+        ):
+        self.abdfiles = { x: self._get_file_format(x) for x in abdfiles }
+        self.verbose = verbose
+        self.n_jobs = n_jobs
+        self._available_format = ['CSV', 'TSV']  #, 'BAM', 'SAM', 'FASTA']
+        self.prefix = prefix
+        '''
+        Return per-sequence abundance from `abdfiles`.
+
+        Parameter
+        ---------
+
+        abdfiles: list[string]
+            Files contains average coverage
+
+        verbose:  int (default: 0)
+            Verbosity level.
+
+        n_jobs: int (default: 1)
+            Ingored.
+        '''
+
+    def _get_file_format(self, file):
+        return file.split(".")[-1].upper()
+        # if ext not in self._available_format:
+        #     raise Error("File format '%s' is not supported")
+        # return ext
+
+    def fit(self, X):
+        '''
+
+        Parameter
+        ---------
+
+        X: DNASequenceBank
+        '''
+        import pandas as pd
+
+        self.data = pd.DataFrame(index=list(X.keys()))
+        i = 0
+        for file, ext in self.abdfiles.items():
+            if ext not in self._available_format:
+                print("Skipping '%s': format '%s' is not supported" % (file, ext))
+                continue
+            if ext == "CSV":
+                tmp = pd.read_csv(file, index_col=0)
+                tmp.columns = (self.prefix+str(i))
+                self.data.join(tmp, how='outer')
+            elif ext == "TSV":
+                tmp = pd.read_csv(file, index_col=0, sep="\t", columns=None)
+                tmp.columns = (self.prefix+str(i))
+                self.data = self.data.join(tmp, how='outer')
+            else:
+                print("Do not know what to do...")  # this should not happen
+            i += 1
+            # elif ext == "SAM":
+            #     self.data = self._get_coverage_from_sam(file)
+            # elif ext == "BAM":
+            #     self.data = self._get_coverage_from_bam(file)
+            # elif ext == "FASTA":
+            #     self.data = self._map_fasta(file, self.ref_contigs)
+
+        return self
+
+    def transform(self, X):
+        '''
+
+        Parameter
+        ---------
+
+        X: DNASequenceBank
+        '''
+        return self.data
