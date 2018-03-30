@@ -645,6 +645,12 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
             pass
         return self
 
+    def _get_kmers(self, seq, k):
+        for i in range(0, len(seq) - k + 1):
+            km = seq[i:i+k]
+            if not 'N' in km:
+                yield seq[i:i+k]
+
     def transform(self, X):
         '''
 
@@ -669,12 +675,8 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
             if self.verbose >= 2:
                 step += 1
                 _print_progressbar(step, len(X), msg=sid)
-            word_list = []
-            for i in range(len(seq) - self.k + 1):
-                km = seq[i:i+self.k]
-                if "N" not in km:
-                    word_list.append(Word(km, self.model[km]))
-            sentences[sid] = Sentence(word_list)
+            sentences[sid] = Sentence(
+                [Word(x, self.model[x]) for x in self._get_kmers(seq, self.k)])
 
         if self.verbose >= 2:
             print()
@@ -687,9 +689,8 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         vectors = sentence_to_vec(list(sentences.values()), self.model.vector_size)
         d = dict(zip(seqids, vectors))
 
-        del seqids, vectors
-        W = pd.DataFrame(data=d).T
-        return W
+        del sentences, seqids, vectors
+        return pd.DataFrame(data=d).T
 
 
 #-------------------------------------------------------------------------------
