@@ -54,7 +54,7 @@ def _maskify(seq, mask):
 
 def _hurricane_death_megatron_300(kargs):
     '''
-    Count features (defined by `mask`) from a sequence and normalize feature count.
+    Count features (defined by `mask`) from a sequence.
 
     Input args:
         ((sequenceid, sequence), mask) = kargs
@@ -86,6 +86,38 @@ def _hurricane_death_megatron_300(kargs):
     # ftnorm = ftdf / ftdf.sum() # vraiment pas sûr de mon coup
     # ftnorm = np.log(ftdf.divide(ftdf.sum(axis=0),axis=1)) # CONCOCT-like normalization
     return(sid, mask, ftnorm)
+
+def _contiguous_kmer_pool(kargs):
+    '''
+    Count features of length `k` from a sequence.
+
+    Input args:
+        ((sequenceid, sequence), k) = kargs
+
+    Output:
+        (sequence_id, mask, feature_count)
+
+        - sequence_id : the input sequence id
+        - mask : the apply maks
+        - feature_count : Pandas DataFrame of count
+
+    Example:
+        (sid,msk,nfc) = _contiguous_kmer_pool( [ ('SEQ1', 'ATGCGTATG'), 3 ] )
+
+    '''
+    import pandas as pd
+    from collections import Counter
+    ((sid, seq), k) = kargs
+    ftlist = list()
+    for i in range(0, len(seq) - k + 1):
+        masked = "".join(_revcomp(seq[i:i+k]))
+        if not 'N' in masked:
+            ftlist.append(masked)
+    ftcnt = Counter(ftlist)
+    del ftlist
+    ftdf = pd.DataFrame(data=ftcnt, index=[sid]).fillna(0).astype(int).T
+    del ftcnt
+    return(sid, k, ftdf)
 
 
 class MaskedKmerModel(BaseEstimator, TransformerMixin):
@@ -124,41 +156,49 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
         self.n_jobs = n_jobs
         # get functions to use with Pool
         self._hurricane_death_megatron_300 = _hurricane_death_megatron_300
+        self._contiguous_kmer_pool = _contiguous_kmer_pool
+        self.k = None
 
-        self._check_mask()
-
-    def _check_mask(self):
-        '''
-        Check if mask is valid
-        '''
+    def fit(self, X):
         import re
         if not re.search('^1[01]*?1$', self.mask):
             raise ValueError("Mask '%s' is not valid" % (self.mask))
 
-    def fit(self, X):
+        if not re.search('0', self.mask):
+            self.k = len(self.mask)
+
         return self
 
     def transform(self, X):
         import itertools
-        import time
+        from time import sleep
         import pandas as pd
         from multiprocessing import Pool
 
         if self.verbose >= 1:
-            print("[INFO] Extracting masked k-mers (1/3)")
+            print("[INFO] Extracting k-mers using mask '%s' (1/3)" % self.mask)
 
         tmpNORM = {}
         p = Pool(self.n_jobs)
-        z = itertools.product(list(X.items()), (self.mask,))
 
-        result = p.map_async(self._hurricane_death_megatron_300, z)
+        if self.k:  # we have a contiguous kmer, do not use masking (faster)
+            if self.verbose >= 3:
+                print("[INFO] Using contiguous kmer method")
+            z = itertools.product(list(X.items()), (self.k,))
+            result = p.map_async(self._contiguous_kmer_pool, z)
+        else:  # we have spaced seed, we have to apply maksing
+            if self.verbose >= 3:
+                print("[INFO] Using spaced kmer method")
+            z = itertools.product(list(X.items()), (self.mask,))
+            result = p.map_async(self._hurricane_death_megatron_300, z)
+
         maxjob = result._number_left
 
         if self.verbose >= 2:
             while not result.ready():
                 _print_progressbar(maxjob - result._number_left, maxjob,
                     msg="Characterizing sequences")
-                time.sleep(0.5)
+                sleep(1)
             _print_progressbar(maxjob - result._number_left, maxjob,
                 msg="Characterizing sequences")
             print()
@@ -212,9 +252,7 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
         X = pd.DataFrame(index=idx).join(lstdt)
         del lstdt
         del tmpNORM # clear old data
-        X = X.T
-        X = X.fillna(0)
-        
+        X = X.T.fillna(0)
         return(X)
 
 
@@ -354,7 +392,7 @@ class InterNucleotideDistanceModel(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         import itertools
-        import time
+        from time import sleep
         import pandas as pd
         from multiprocessing import Pool
         if self.verbose >= 1:
@@ -368,7 +406,7 @@ class InterNucleotideDistanceModel(BaseEstimator, TransformerMixin):
             while not result.ready():
                 _print_progressbar(maxjob - result._number_left, maxjob,
                     msg="Characterizing sequences")
-                time.sleep(0.5)
+                sleep(1)
             _print_progressbar(maxjob - result._number_left, maxjob,
                 msg="Characterizing sequences")
             print()
