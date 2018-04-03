@@ -710,7 +710,6 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
 
         sentences = {k:v for k,v in result.get()}
         del result
-        return sentences
 
         if self.verbose >= 2:
             print()
@@ -722,8 +721,8 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         seqids = list(sentences.keys())
         vectors = sentence_to_vec(list(sentences.values()), self.model.vector_size)
         d = dict(zip(seqids, vectors))
-
         del sentences, seqids, vectors
+
         return pd.DataFrame(data=d).T
 
 
