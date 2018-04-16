@@ -317,12 +317,16 @@ class DNASequenceBank(dict):
         if self.verbose >= 1:
             print("[INFO] %d sequences loaded" % i)
 
-    def _save_sequences(self, outfile):
+    def _save_sequences(self, outfile, ids=None, append=False):
         '''Save sequences to a FASTA file.
         One of the valid extensions will be added to `outfile` if not found.
         If `outfile` already exists, it will be overrided without warning.
         '''
         import re
+        
+        opt_open = "w"
+        if append:
+            opt_open = "a"
 
         extensions = [ 'fasta', 'fa', 'fna' ]
         if not outfile.split('.')[-1] in extensions:
@@ -331,14 +335,25 @@ class DNASequenceBank(dict):
         if self.verbose >= 1:
             print("[INFO] Writing sequences to '%s'" % outfile)
 
-        with open(outfile, "w") as f:
+        with open(outfile, opt_open) as f:
             i = 0
-            for sid, seq in self.items():
-                i += 1
-                if self.verbose >= 2:
-                    _print_progressbar(i, len(self), msg=sid)
-                _ = f.write(">" + sid + "\n")
-                _ = f.write(re.sub(r'(.{,80})',r"\1\n", seq))
+            if ids is None:
+                for sid, seq in self.items():
+                    i += 1
+                    if self.verbose >= 2:
+                        _print_progressbar(i, len(self), msg=sid)
+                    _ = f.write(">" + sid + "\n")
+                    _ = f.write(re.sub(r'(.{,80})',r"\1\n", seq))
+            else:
+                for sid, seq in self.items():
+                    if sid not in ids:
+                        next
+                    i += 1
+                    if self.verbose >= 2:
+                        _print_progressbar(i, len(ids), msg=sid)
+                    _ = f.write(">" + sid + "\n")
+                    _ = f.write(re.sub(r'(.{,80})',r"\1\n", seq))
+
 
         if self.verbose >= 2:  print()
         if self.verbose >= 1:
