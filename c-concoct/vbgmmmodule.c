@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <float.h>
+#include <sys/time.h>
 
 /*GSL includes*/
 #include <gsl/gsl_vector.h>
@@ -33,9 +34,9 @@
 #include "vbgmmmodule.h"
 
 // Module method definition
-static PyObject *vbgmm_print_hello_world(PyObject * self, PyObject * args)
+static PyObject *get_wrapper_version(PyObject * self, PyObject * args)
 {
-	printf("Hello World\n");
+	printf("0.2\n");
 	Py_RETURN_NONE;
 }
 
@@ -57,6 +58,7 @@ static PyObject *vbgmm_fit(PyObject * self, PyObject * args)
 	    (args, "siikidi", &szFileStub, &nKStart, &nLMin, &lSeed, &nMaxIter,
 	     &dEpsilon, &bCout))
 		return NULL;
+	//TODO: return the np.array of clustering result
 	sts =
 	    driver(szFileStub, nKStart, nLMin, lSeed, nMaxIter, dEpsilon,
 		   bCout);
@@ -73,14 +75,14 @@ static PyObject *vbgmm_fit(PyObject * self, PyObject * args)
 static PyMethodDef vbgmm_methods[] = {
 	{
 	 "print_hello_world",
-	 vbgmm_print_hello_world,
+	 get_wrapper_version,
 	 METH_NOARGS,
-	 'Print "Hello World"'},
+	 'Return the python wrapper version'},
 	{
 	 "get_n_jobs",
 	 vbgmm_get_n_jobs,
 	 METH_NOARGS,
-	 "Return number of jobs to use."},
+	 "Return number of jobs to run."},
 	{
 	 "fit",
 	 vbgmm_fit,
@@ -181,68 +183,76 @@ driver(const char *szFileStub,
 
 	calcCovarMatrices(ptBestCluster, &tData);
 
+	// printing clustering results
+	printf("[DEBUG] Printing clustering\n");
 	sprintf(szOFile, "%sclustering_gt%d.csv", tParams.szOutFileStub,
 		tParams.nLMin);
 	writeClusters(szOFile, ptBestCluster, &tData);
 
-	sprintf(szOFile, "%spca_means_gt%d.csv", tParams.szOutFileStub,
-		tParams.nLMin);
-	writeMeans(szOFile, ptBestCluster);
+	// printf("[DEBUG] Printing PCA means\n");
+	// sprintf(szOFile, "%spca_means_gt%d.csv", tParams.szOutFileStub,
+	// 	tParams.nLMin);
+	// writeMeans(szOFile, ptBestCluster);
 
-	sprintf(szOFile, "%smeans_gt%d.csv", tParams.szOutFileStub,
-		tParams.nLMin);
-	writeTMeans(szOFile, ptBestCluster, &tData);
+	// printf("[DEBUG] Printing means\n");
+	// sprintf(szOFile, "%smeans_gt%d.csv", tParams.szOutFileStub,
+	// 	tParams.nLMin);
+	// writeTMeans(szOFile, ptBestCluster, &tData);
 
-	for (k = 0; k < ptBestCluster->nK; k++) {
-		sprintf(szOFile, "%spca_variances_gt%d_dim%d.csv",
-			tParams.szOutFileStub, tParams.nLMin, k);
+	// printf("[DEBUG] Printing pca variances\n");
+	// for (k = 0; k < ptBestCluster->nK; k++) {
+	// 	sprintf(szOFile, "%spca_variances_gt%d_dim%d.csv",
+	// 		tParams.szOutFileStub, tParams.nLMin, k);
 
-		writeSquareMatrix(szOFile, ptBestCluster->aptSigma[k], nD);
+	// 	writeSquareMatrix(szOFile, ptBestCluster->aptSigma[k], nD);
 
-		/*not entirely sure this is correct? */
-		gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, tData.ptTMatrix,
-			       ptBestCluster->aptSigma[k], 0.0, ptTemp);
+	// 	/*not entirely sure this is correct? */
+	// 	gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, tData.ptTMatrix,
+	// 		       ptBestCluster->aptSigma[k], 0.0, ptTemp);
 
-		gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1.0, ptTemp,
-			       tData.ptTMatrix, 0.0, ptTVar);
+	// 	gsl_blas_dgemm(CblasNoTrans, CblasTrans, 1.0, ptTemp,
+	// 		       tData.ptTMatrix, 0.0, ptTVar);
 
-		sprintf(szOFile, "%svariances_gt%d_dim%d.csv",
-			tParams.szOutFileStub, tParams.nLMin, k);
+	// 	sprintf(szOFile, "%svariances_gt%d_dim%d.csv",
+	// 		tParams.szOutFileStub, tParams.nLMin, k);
 
-		writeSquareMatrix(szOFile, ptTVar, nD);
-	}
+	// 	writeSquareMatrix(szOFile, ptTVar, nD);
+	// }
 
-	sprintf(szOFile, "%sresponsibilities.csv", tParams.szOutFileStub);
+	// printf("[DEBUG] Printing responsibilities\n");
+	// sprintf(szOFile, "%sresponsibilities.csv", tParams.szOutFileStub);
 
-	ofp = fopen(szOFile, "w");
-	if (ofp) {
+	// ofp = fopen(szOFile, "w");
+	// if (ofp) {
 
-		for (i = 0; i < nN; i++) {
-			for (k = 0; k < ptBestCluster->nK - 1; k++) {
-				fprintf(ofp, "%f,", ptBestCluster->aadZ[i][k]);
-			}
-			fprintf(ofp, "%f\n",
-				ptBestCluster->aadZ[i][ptBestCluster->nK - 1]);
-		}
+	// 	for (i = 0; i < nN; i++) {
+	// 		for (k = 0; k < ptBestCluster->nK - 1; k++) {
+	// 			fprintf(ofp, "%f,", ptBestCluster->aadZ[i][k]);
+	// 		}
+	// 		fprintf(ofp, "%f\n",
+	// 			ptBestCluster->aadZ[i][ptBestCluster->nK - 1]);
+	// 	}
 
-		fclose(ofp);
-	} else {
-		fprintf(stderr, "Failed openining %s in main\n", szOFile);
-		fflush(stderr);
-	}
+	// 	fclose(ofp);
+	// } else {
+	// 	fprintf(stderr, "Failed openining %s in main\n", szOFile);
+	// 	fflush(stderr);
+	// }
 
-	sprintf(szOFile, "%svbl.csv", tParams.szOutFileStub);
+	// printf("[DEBUG] Printing VBL\n");
+	// sprintf(szOFile, "%svbl.csv", tParams.szOutFileStub);
 
-	ofp = fopen(szOFile, "w");
-	if (ofp) {
-		fprintf(ofp, "%d,%f,%d\n", ptBestCluster->nK,
-			ptBestCluster->dVBL, ptBestCluster->nThread);
-		fclose(ofp);
-	} else {
-		fprintf(stderr, "Failed openining %s in main\n", szOFile);
-		fflush(stderr);
-	}
+	// ofp = fopen(szOFile, "w");
+	// if (ofp) {
+	// 	fprintf(ofp, "%d,%f,%d\n", ptBestCluster->nK,
+	// 		ptBestCluster->dVBL, ptBestCluster->nThread);
+	// 	fclose(ofp);
+	// } else {
+	// 	fprintf(stderr, "Failed openining %s in main\n", szOFile);
+	// 	fflush(stderr);
+	// }
 
+	printf("[DEBUG] Cleaning memory\n");
 	/*free up memory in data object */
 	destroyData(&tData);
 
@@ -256,6 +266,7 @@ driver(const char *szFileStub,
 	gsl_matrix_free(ptTemp);
 	gsl_matrix_free(ptTVar);
 
+	printf("[INFO] done\n");
 	return EXIT_SUCCESS;
 }
 
@@ -1675,14 +1686,15 @@ void gmmTrainVB(t_Cluster * ptCluster, t_Data * ptData)
 		dDelta = fabs(ptCluster->dVBL - dLastVBL);
 
 		if (ofp) {
-			fprintf(ofp, "%d,%f,%f,", nIter, ptCluster->dVBL,
-				dDelta);
+			fprintf(ofp, "%d,%f,%f,", nIter, ptCluster->dVBL, dDelta);
 			for (k = 0; k < nK - 1; k++) {
 				fprintf(ofp, "%f,", ptCluster->adPi[k]);
 			}
 			fprintf(ofp, "%f\n", ptCluster->adPi[nK - 1]);
 			fflush(ofp);
 		}
+		printf("[DEBUG-%d] nIter=%d ; maxIter=%d ; dVBL=%.4f ; delta=%.4e ; epsilon=%.4e\n",
+			ptCluster->nThread, nIter, nMaxIter, ptCluster->dVBL, dDelta, dEpsilon);
 		nIter++;
 	}
 
@@ -1716,6 +1728,8 @@ void writeClusters(char *szOutFile, t_Cluster * ptCluster, t_Data * ptData)
 			fprintf(ofp, "%s,%d\n", ptData->aszSampleNames[i],
 				ptCluster->anMaxZ[i]);
 		}
+		fclose(ofp);
+		printf("[DEBUG] file '%s' closed\n", szOutFile);
 	} else {
 		fprintf(stderr,
 			"Failed to open %s for writing in writeClusters\n",
@@ -1736,6 +1750,7 @@ void writeMeans(char *szOutFile, t_Cluster * ptCluster)
 			}
 			fprintf(ofp, "%f\n", ptCluster->aadMu[i][nD - 1]);
 		}
+		fclose(ofp);
 	} else {
 		fprintf(stderr,
 			"Failed to open %s for writing in writeMeanss\n",
@@ -1768,6 +1783,7 @@ void writeTMeans(char *szOutFile, t_Cluster * ptCluster, t_Data * ptData)
 			}
 			fprintf(ofp, "%f\n", gsl_vector_get(ptTVector, nD - 1));
 		}
+		fclose(ofp);
 	} else {
 		fprintf(stderr,
 			"Failed to open %s for writing in writeMeanss\n",
@@ -1784,19 +1800,25 @@ void *fitEM(void *pvCluster)
 	t_Cluster *ptCluster = (t_Cluster *) pvCluster;
 	gsl_rng *ptGSLRNG = NULL;
 	const gsl_rng_type *ptGSLRNGType = NULL;
-
-/*initialise GSL RNG*/
+	time_t start_t, end_t;
+	
+	time(&start_t);
+	/*initialise GSL RNG*/
 	ptGSLRNGType = gsl_rng_default;
 	ptGSLRNG = gsl_rng_alloc(ptGSLRNGType);
 
 	gsl_rng_set(ptGSLRNG, ptCluster->lSeed);
-
+	printf("[DEBUG-%d] init KMeans...\n", ptCluster->nThread);
 	initKMeans(ptGSLRNG, ptCluster, ptCluster->ptData);
 
+	printf("[DEBUG-%d] train VBGMM...\n", ptCluster->nThread);
 	gmmTrainVB(ptCluster, ptCluster->ptData);
 
 	gsl_rng_free(ptGSLRNG);
-
+	time(&end_t);
+	printf("[DEBUG-%d] Lower bound=%.2f ; Execution time fitEM=%.2f sec\n",
+		ptCluster->nThread, ptCluster->dVBL, difftime(end_t, start_t));
+	
 	return NULL;
 }
 
@@ -1849,6 +1871,7 @@ void *runRThreads(void *pvpDCluster)
 			dBestVBL = aptCluster[r]->dVBL;
 		}
 	}
+	printf("[DEBUG] best clustering result dVBL = %.4f\n", dBestVBL);
 
 	*pptDCluster = aptCluster[nBestR];
 	for (r = 0; r < N_RTHREADS; r++) {
@@ -1860,6 +1883,7 @@ void *runRThreads(void *pvpDCluster)
 	free(aptCluster);
 
 	return NULL;
+
  memoryError:
 	fprintf(stderr, "Failed allocating memory in runRThreads\n");
 	fflush(stderr);
