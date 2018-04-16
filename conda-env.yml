@@ -1,173 +1,91 @@
-name: fennec-dev
+name: fennec2-dev
 channels:
-- bioconda
 - conda-forge
+- bioconda
 - defaults
 dependencies:
-- biopython=1.70=np112py36_1
 - fraggenescan=1.30=pl5.22.0_1
 - glimmer=3.02=2
 - prodigal=2.6.3=0
-- r-bh=1.60.0_2=r3.2.2_0
-- r-purrr=0.2.2=1
-- backports=1.0=py36_1
-- backports.functools_lru_cache=1.4=py36_1
 - blas=1.1=openblas
-- bzip2=1.0.6=1
-- ca-certificates=2017.7.27.1=0
-- cairo=1.14.6=5
-- certifi=2017.7.27.1=py36_0
-- curl=7.55.1=0
-- cycler=0.10.0=py36_0
-- cython=0.27.3=py36_0
-- dbus=1.10.22=0
-- expat=2.2.1=0
-- fontconfig=2.12.1=5
-- freetype=2.7=2
-- gettext=0.19.7=1
-- glib=2.51.4=0
-- graphite2=1.3.9=0
-- gsl=2.2.1=blas_openblas_3
-- gst-plugins-base=1.8.0=0
-- gstreamer=1.8.0=2
-- harfbuzz=1.4.3=0
-- icu=58.1=1
-- jinja2=2.9.6=py36_0
-- jpeg=9b=2
-- krb5=1.14.2=0
-- libffi=3.2.1=3
-- libiconv=1.14=4
-- libpng=1.6.28=2
-- libssh2=1.8.0=2
-- libtiff=4.0.8=0
-- libxcb=1.12=1
-- markupsafe=1.0=py36_0
-- matplotlib=2.1.0=py36_1
-- mmtf-python=1.0.9=py_0
-- msgpack-python=0.4.8=py36_0
+- ca-certificates=2018.1.18=0
+- certifi=2018.1.18=py36_0
+- gsl=2.4=blas_openblas_0
 - ncurses=5.9=10
-- numpy=1.12.1=py36_blas_openblas_200
-- olefile=0.44=py36_0
-- openblas=0.2.19=2
-- openssl=1.0.2l=0
-- pandas=0.21.0=py36_0
-- pango=1.40.4=0
-- pcre=8.39=0
+- openblas=0.2.20=7
+- openssl=1.0.2n=0
 - perl=5.22.0.1=0
-- pillow=4.2.1=py36_0
-- pip=9.0.1=py36_0
-- pixman=0.34.0=0
-- pyparsing=2.2.0=py36_0
-- pyqt=5.6.0=py36_4
-- python=3.6.3=1
-- python-dateutil=2.6.1=py36_0
-- pytz=2017.3=py_1
-- qt=5.6.2=3
-- readline=6.2=0
-- scikit-learn=0.19.1=py36_blas_openblas_200
-- scipy=0.19.1=py36_blas_openblas_202
-- setuptools=36.6.0=py36_1
-- singledispatch=3.4.0.3=py36_0
-- sip=4.18=py36_1
-- six=1.11.0=py36_1
-- sqlite=3.13.0=1
-- tk=8.5.19=2
-- tornado=4.5.2=py36_0
-- wheel=0.30.0=py_1
-- xorg-libxau=1.0.8=3
-- xorg-libxdmcp=1.1.2=3
+- pip=9.0.3=py36_0
+- python=3.6.5=1
+- readline=7.0=0
+- setuptools=39.0.1=py36_0
+- sqlite=3.20.1=2
+- tk=8.6.7=0
+- wheel=0.31.0=py36_0
 - xz=5.2.3=0
 - zlib=1.2.11=0
 - libgcc=7.2.0=h69d50b8_2
-- libgcc-ng=7.2.0=h7cc24e2_2
+- libgcc-ng=7.2.0=hdf63c60_3
 - libgfortran=3.0.0=1
-- libstdcxx-ng=7.2.0=h7a57d05_2
-- libxml2=2.9.4=0
-- r-assertthat=0.2.0=r342h06193eb_0
-- r-base=3.2.2=0
-- r-bindr=0.1=r342hdee8079_0
-- r-bindrcpp=0.2=r342h4ea5b31_0
-- r-bit=1.1_12=r342h7a05cba_0
-- r-bit64=0.9_7=r342hcc44603_0
-- r-blob=1.1.0=r342hf606c5c_0
-- r-dbi=0.7=r342h835dbd3_0
-- r-dbplyr=1.1.0=r342h3750f00_0
-- r-digest=0.6.12=r342hee14287_0
-- r-dplyr=0.7.4=r342hee63e26_0
-- r-glue=1.1.1=r342h3154e12_0
-- r-lazyeval=0.2.0=r342h346dbdc_0
-- r-magrittr=1.5=r342h895a831_4
-- r-memoise=1.1.0=r342hcbc733d_0
-- r-pkgconfig=2.0.1=r342h5d9b92e_0
-- r-plogr=0.1_1=r342h6d7f4c2_0
-- r-r6=2.2.2=r342hcc750b5_0
-- r-rcpp=0.12.13=r342h9f83869_0
-- r-rlang=0.1.2=r342hc878738_0
-- r-rsqlite=2.0=r342h51f80d0_0
-- r-tibble=1.3.4=r342h041fa31_0
-- reportlab=3.4.0=py36_0
-- rpy2=2.9.0=py36r342h348380c_0
+- libstdcxx-ng=7.2.0=hdf63c60_3
 - pip:
-  - astroid==1.6.1
-  - backports.functools-lru-cache==1.4
+  - backcall==0.1.0
   - bcbio-gff==0.6.4
   - boto==2.48.0
-  - boto3==1.5.32
-  - botocore==1.8.46
+  - boto3==1.7.1
+  - botocore==1.10.1
   - bz2file==0.98
-  - cachecontrol==0.12.3
-  - cffi==1.11.4
+  - cachecontrol==0.12.4
+  - cffi==1.11.5
   - chardet==3.0.4
   - cvxopt==1.1.9
-  - debacl==1.1
+  - cycler==0.10.0
+  - cython==0.28.1
   - decorator==4.2.1
-  - diptest==0.0.0
   - docutils==0.14
-  - fennec==0.1.dev0
-  - gensim==0.13.2
-  - hausdorff==0.0.0
+  - fitsne==0.2.2
+  - gensim==3.4.0
   - hdbscan==0.8.12
   - idna==2.6
-  - ipython==6.2.1
+  - ipython==6.3.1
   - ipython-genutils==0.2.0
-  - isort==4.2.15
+  - isort==4.3.4
   - jedi==0.11.1
   - jmespath==0.9.3
-  - lazy-object-proxy==1.3.1
+  - kiwisolver==1.0.1
   - lockfile==0.12.2
-  - logbook==1.2.1
-  - mccabe==0.6.1
-  - memory-profiler==0.51.0
-  - mklaren==1.1
-  - mpmath==1.0.0
-  - multicoretsne==0.1
-  - natsort==5.1.1
-  - nested-dict==1.61
+  - matplotlib==2.2.2
+  - msgpack-python==0.5.6
+  - multicoretsne==0.0.1.1
+  - natsort==5.2.0
   - networkx==2.1
   - nose==1.3.7
   - numexpr==2.6.4
+  - numpy==1.14.2
+  - pandas==0.22.0
   - parso==0.1.1
-  - pexpect==4.3.1
+  - pexpect==4.4.0
   - pickleshare==0.7.4
-  - prettytable==0.7.2
   - prompt-toolkit==1.0.15
-  - psutil==5.4.3
   - ptyprocess==0.5.2
   - pycparser==2.18
   - pygments==2.2.0
-  - pylint==1.8.2
+  - pyparsing==2.2.0
+  - python-dateutil==2.7.2
+  - pytz==2018.3
   - requests==2.18.4
   - s3transfer==0.1.13
   - scikit-bio==0.5.1
   - scikit-fuzzy==0.3.1
+  - scikit-learn==0.19.1
+  - scipy==1.0.1
   - simplegeneric==0.8.1
+  - six==1.11.0
   - sklearn-extensions==0.0.2
-  - smart-open==1.5.6
-  - sympy==1.1.1
+  - smart-open==1.5.7
   - tables==3.4.2
   - traitlets==4.3.2
   - urllib3==1.22
   - wcwidth==0.1.7
-  - wrapt==1.10.11
-prefix: /home/prof/gravouil/.opt/miniconda2/envs/fennec-dev
+prefix: /home/prof/gravouil/.opt/miniconda2/envs/fennec2-dev
 
