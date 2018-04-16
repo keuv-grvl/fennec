@@ -780,7 +780,7 @@ class SequenceAbundanceModel(BaseEstimator, TransformerMixin):
                 continue
             if ext == "CSV":
                 tmp = pd.read_csv(file, index_col=0)
-                tmp.columns = (self.prefix+str(i))
+                tmp.columns = (self.prefix + str(i))
                 self.data.join(tmp, how='outer')
             elif ext == "TSV":
                 tmp = pd.read_csv(file, index_col=0, sep="\t", columns=None)
@@ -788,13 +788,13 @@ class SequenceAbundanceModel(BaseEstimator, TransformerMixin):
                 self.data = self.data.join(tmp, how='outer')
             else:
                 print("Do not know what to do...")  # this should not happen
-            i += 1
             # elif ext == "SAM":
             #     self.data = self._get_coverage_from_sam(file)
             # elif ext == "BAM":
             #     self.data = self._get_coverage_from_bam(file)
             # elif ext == "FASTA":
             #     self.data = self._map_fasta(file, self.ref_contigs)
+            i += 1
 
         return self
 
