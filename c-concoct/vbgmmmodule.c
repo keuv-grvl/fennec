@@ -1857,7 +1857,7 @@ void *runRThreads(void *pvpDCluster)
 		    pthread_create(&atRestarts[r], NULL, fitEM,
 				   (void *)aptCluster[r]);
 	}
-
+	//TODO: use pthread_tryjoin_np to join pthreads or display some info
 	for (r = 0; r < N_RTHREADS; r++) {
 		pthread_join(atRestarts[r], NULL);
 	}

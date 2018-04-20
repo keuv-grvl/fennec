@@ -103,7 +103,7 @@ typedef struct s_Cluster {
 } t_Cluster;
 
 #define DELIM ",\n"
-#define MAX_LINE_LENGTH   150000
+#define MAX_LINE_LENGTH   1500000
 #define MAX_WORD_LENGTH   128
 
 #define TRUE  1
