@@ -543,7 +543,7 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
                     i += 1
                     _print_progressbar(i, nbentry, msg=seq.id)
                 l = len(seq)  # sequence length
-                cl=0  # number of coding nucleotides
+                cl = 0  # number of coding nucleotides
                 for f in seq.features:
                     cl += 1 + abs(f.location.start - f.location.end)
                 ftdensity[seq.id] = cl/l
@@ -551,7 +551,7 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
             if self.verbose >= 2:
                 print()
 
-            tmpX.append( pd.DataFrame(ftdensity, index=["CD_" + t]).T )
+            tmpX.append(pd.DataFrame(ftdensity, index=["CD_" + t]).T)
             del ftdensity
         ret = pd.DataFrame().join(tmpX, how='outer').fillna(0)
         return ret
@@ -563,7 +563,7 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
 def _get_kmers(seq, k):
     # kmers_list = []
     for i in range(0, len(seq) - k + 1):
-        km = seq[i:i+k]
+        km = seq[i:i + k]
         if not 'N' in km:
             # kmers_list.append(km)
             yield km
@@ -581,11 +581,11 @@ def _get_sentence(kargs):
 
 class Contig2VecModel(BaseEstimator, TransformerMixin):
     def __init__(self,
-            k=4,
-            modelfile='urq',
-            verbose=0,
-            n_jobs=1
-        ):
+                 k=4,
+                 modelfile='urq',
+                 verbose=0,
+                 n_jobs=1
+                ):
         '''
         Extract k-mers from sequences, apply a pretrained Dna2Vec model then model
         sequences using sentence2vec.
@@ -667,7 +667,48 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
             pass
         return self
 
+
     def transform(self, X):
+        '''
+        Parameter
+        ---------
+        X: DNASequenceBank
+        '''
+        import pandas as pd
+        from ._sentence2vec.sentence2vec import Word, Sentence, sentence_to_vec
+
+        if not self.model:
+            raise Error("[ERROR] Model has not been loaded")
+
+        sentences = {}
+        step = 0
+
+        if self.verbose >= 1:
+            print("[INFO] Extracting sentences (1/2)")
+
+        for sid, seq in X.items():
+            if self.verbose >= 2:
+                step += 1
+                _print_progressbar(step, len(X), msg=sid)
+            sentences[sid] = Sentence([Word(x, self.model[x])
+                for x in _get_kmers(seq, self.k)])
+
+        if self.verbose >= 2:
+            print()
+
+        # convert Sentences to vectors
+        if self.verbose >= 1:
+            print("[INFO] Converting sentences to vectors (2/2)")
+
+        seqids = list(sentences.keys())
+        vectors = sentence_to_vec(list(sentences.values()), self.model.vector_size)
+        d = dict(zip(seqids, vectors))
+        del sentences, seqids, vectors
+
+        return pd.DataFrame(data=d).T
+
+
+    def transform_par(self, X):
         '''
 
         Parameter
@@ -679,19 +720,19 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         import pandas as pd
         from multiprocessing import Pool
         from time import sleep
-        from ._sentence2vec.sentence2vec import Word, Sentence, sentence_to_vec
+        from ._sentence2vec.sentence2vec import sentence_to_vec
 
         if not self.model:
             raise Error("Model has not been loaded")
 
         if self.verbose >= 1:
-            print("[INFO] Extracting sentences")
+            print("[INFO] Extracting sentences (1/2)")
 
         p = Pool(self.n_jobs)
         z = zip(X.items(),
                 itertools.repeat(self.k),
                 itertools.repeat(self.model.wv.word_vec)
-                )
+               )
         result = p.map_async(_get_sentence, z)
 
         maxjob = result._number_left
@@ -716,7 +757,7 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
 
         # convert Sentence to vector
         if self.verbose >= 1:
-            print("[INFO] Converting sentences to vectors")
+            print("[INFO] Converting sentences to vectors (2/2)")
 
         seqids = list(sentences.keys())
         vectors = sentence_to_vec(list(sentences.values()), self.model.vector_size)
