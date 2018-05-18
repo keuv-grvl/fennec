@@ -320,7 +320,7 @@ def get_nearest_dissimilar_distance(seq, K=15):
     import numpy as np
 
     nucl = ("A", "T", "G", "C")
-    W = dict.fromkeys(nucl)
+    W = {k:[] for k in nucl}
     i = 0
     l = 1
 
@@ -345,7 +345,10 @@ def get_nearest_dissimilar_distance(seq, K=15):
     f1 = np.empty((len(nucl), K), float)
 
     for a, k in itertools.product(nucl, range(K)):
-        f1[ nucl.index(a) ][k] = W[a].count(k+1) / len(W[a])
+        try:
+            f1[nucl.index(a)][k] = W[a].count(k+1) / len(W[a])
+        except:
+            f1[nucl.index(a)][k] = 0
 
     return f1.reshape(f1.size)
 
