@@ -638,7 +638,7 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         self.k = k
         self.available_models = {
                 f.split("-")[-1].split('.')[0]: f
-                    for f in glob(dirname(__file__)+"/pretrained/*w2v")
+                    for f in glob(dirname(__file__)+"/pretrained/*.w2v.bz2")
             }
         self.modelfile = modelfile
         if self.modelfile in self.available_models.keys():
