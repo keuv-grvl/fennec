@@ -52,7 +52,7 @@ def _maskify(seq, mask):
         )
     )
 
-def _hurricane_death_megatron_300(kargs):
+def _spaced_kmer_pool(kargs):
     '''
     Count features (defined by `mask`) from a sequence.
 
@@ -67,7 +67,7 @@ def _hurricane_death_megatron_300(kargs):
         - norm_feature_count : Pandas DataFrame of count
 
     Example:
-        (sid,msk,nfc) = self._hurricane_death_megatron_300( [ ('SEQ1', 'ATGCGTA'), '101' ] )
+        (sid,msk,nfc) = self._spaced_kmer_pool( [ ('SEQ1', 'ATGCGTA'), '101' ] )
 
     '''
     import pandas as pd
@@ -155,7 +155,7 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
         self.verbose = verbose
         self.n_jobs = n_jobs
         # get functions to use with Pool
-        self._hurricane_death_megatron_300 = _hurricane_death_megatron_300
+        self._spaced_kmer_pool = _spaced_kmer_pool
         self._contiguous_kmer_pool = _contiguous_kmer_pool
         self.k = None
 
@@ -186,11 +186,11 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
                 print("[INFO] Using contiguous kmer method")
             z = itertools.product(list(X.items()), (self.k,))
             result = p.map_async(self._contiguous_kmer_pool, z)
-        else:  # we have spaced seed, we have to apply maksing
+        else:  # we have spaced seed, we have to apply masking (spaced kmer)
             if self.verbose >= 3:
                 print("[INFO] Using spaced kmer method")
             z = itertools.product(list(X.items()), (self.mask,))
-            result = p.map_async(self._hurricane_death_megatron_300, z)
+            result = p.map_async(self._spaced_kmer_pool, z)
 
         maxjob = result._number_left
 
