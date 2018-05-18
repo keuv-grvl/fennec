@@ -299,25 +299,26 @@ class DNASequenceBank(dict):
         fields = ['fastafile', 'min_length', 'max_nb_seq', 'mode', 'verbose', 'chunk_size', 'overlap', 'overlap_', 'nb_chunks']
         return "%s(%s)" % (self.__class__.__name__, ', '.join([f+"="+self.__dict__[f].__repr__() for f in fields if f in self.__dict__]))
 
-    def _chunks(self, s, n, o, merge_last):
+    def _chunks(self, s, n, o, min_len):
         '''
-        Yield successive `n`-sized chunks from DNA sequence `s` with given
-        overlap `o` between the chunks. If `n` is 0, do not split `s`.
-
-        Highly inspired from: https://github.com/BinPro/CONCOCT/blob/master/scripts/cut_up_fasta.py
+        Returns `n`-sized chunks from DNA sequence `s` with given overlap `o`
+        between the chunks. If `n` is 0, do not split `s`.
         '''
-        assert n >= 0, f"Chunk size must be 0 or more, got {n}."
-        if n >= len(s) or n == 0:
-            yield s
+        chunks = []
+        if len(s) <= n:
+            chunks.append(s)
         else:
-            if not n > o:
-                raise ValueError(f"Chunk size ({n}) must be higher than the overlap ({o}).")
-            if not merge_last:
-                for i in range(0, len(s), n - o):
-                    yield s[i:i + n]
-            else:
-                for i in range(0, len(s) - n + 1, n - o):
-                    yield s[i:i + n] if i + n + n - o <= len(s) else s[i:]
+            i = 0
+            while i < len(s):
+                chunks.append(s[i:i+n])
+                i, i+n, s[i:i+n]
+                i += n
+                if i < len(s):
+                    i -= o
+            if len(chunks[-1]) < min_len:
+                chunks[-2] += chunks[-1]
+                del chunks[-1]
+        return chunks
 
     def read_fasta(self, path, format='fasta'):
         '''
