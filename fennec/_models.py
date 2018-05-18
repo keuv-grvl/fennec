@@ -259,7 +259,7 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
 #-------------------------------------------------------------------------------
 
 
-def get_ind_profiles(seq, K=15):
+def _get_ind_profiles(seq, K=15):
     '''
     doi: 10.1016/j.physa.2017.04.064
 
@@ -310,7 +310,7 @@ def get_ind_profiles(seq, K=15):
     return f0.reshape(f0.size)
 
 
-def get_nearest_dissimilar_distance(seq, K=15):
+def _get_nearest_dissimilar_distance(seq, K=15):
     '''
     doi: 10.1016/j.physa.2017.04.064
 
@@ -353,12 +353,12 @@ def get_nearest_dissimilar_distance(seq, K=15):
     return f1.reshape(f1.size)
 
 
-def inter_nucleotide_distance_profile(kargs):
+def _inter_nucleotide_distance_profile(kargs):
     (sid, seq), K = kargs
     import numpy as np
-    f0 = get_ind_profiles(seq, K=K)
-    f1 = get_nearest_dissimilar_distance(seq, K=K)
-    X = np.concatenate( [f1, f0] )
+    f0 = _get_ind_profiles(seq, K=K)
+    f1 = _get_nearest_dissimilar_distance(seq, K=K)
+    X = np.concatenate([f1, f0])
     return (sid, X)
 
 
@@ -388,7 +388,7 @@ class InterNucleotideDistanceModel(BaseEstimator, TransformerMixin):
         self.K = K
         self.verbose = verbose
         self.n_jobs = n_jobs
-        self.inter_nucleotide_distance_profile = inter_nucleotide_distance_profile
+        self._inter_nucleotide_distance_profile = _inter_nucleotide_distance_profile
 
     def fit(self, X):
         return self
@@ -401,7 +401,7 @@ class InterNucleotideDistanceModel(BaseEstimator, TransformerMixin):
         if self.verbose >= 1:
             print("[INFO] Extracting IND profiles")
         p = Pool(self.n_jobs)
-        result = p.map_async(self.inter_nucleotide_distance_profile,
+        result = p.map_async(self._inter_nucleotide_distance_profile,
             zip (list(X.items()), itertools.cycle( (self.K,) )))
         maxjob = result._number_left
 
