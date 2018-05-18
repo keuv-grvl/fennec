@@ -13,29 +13,36 @@ pip install .
 ## Usage
 
 ```python
-import fennec
-fastafile = '/home/prof/gravouil/fennec/sequences/S.Scaffolds.1kb+.split10kb.fasta'
-seqdb = fennec.DNASequenceBank(fastafile, 1000, verbose=2, nb_seq=2500)
+import os, fennec
 
-kc = fennec.MaskedKmerModel(mask="1111", n_jobs=160, verbose=2)
-X = kc.fit(seqdb).transform(seqdb)
-X.shape
+fastafile = '/path/to/file.fasta'
+h5file = '/path/to/file.h5'  # every data will be stored here
 
-ind = fennec.InterNucleotideDistanceModel(K=15, n_jobs=160, verbose=2)
-Y = ind.fit(seqdb).transform(seqdb)
-Y.shape
+# load sequences
+if os.path.exists(h5file):
+    seqdb = fennec.DNASequenceBank.read_hdf(h5file)
+else:
+    seqdb = fennec.DNASequenceBank(min_lenght=1000, chunk_size=10000, verbose=2)
+    seqdb.read_fasta(fastafile)
+    seqdb.to_hdf(h5file)
 
-cd = fennec.CodingDensityModel(force=True, n_jobs=160, verbose=2)
-cd.tools  # list of tools that will be used
-Z = cd.fit(seqdb).transform(seqdb)
-Z.shape
+# define models
+models_to_apply = {
+    'raw_kmers4':       fennec.MaskedKmerModel(mask="1111", n_jobs=160, verbose=3),
+    'raw_kmers110011':  fennec.MaskedKmerModel(mask="110011", n_jobs=160, verbose=3),
+    'raw_ind15':        fennec.InterNucleotideDistanceModel(K=15, n_jobs=160, verbose=2),
+    'raw_contig2vec4':  fennec.Contig2VecModel(n_jobs=160, verbose=2)
+}
 
-dv = fennec.Contig2VecModel(verbose=2)
-dv.available_models  # list of available models
-W = dv.fit(seqdb).transform(seqdb)
-W.shape
+# apply models
+for model in models_to_apply.keys():
+    print(f" ø {model}")
+    X = models_to_apply[model].fit_transform(seqdb)
+    if model.startswith("raw_kmers"):  # if kmer count
+        X = X.astype(int)
+    print(f"{model} loaded (shape={X.shape})")
+    X.to_hdf(h5file, model)
 ```
-
 
 ## Dependencies
 
@@ -54,7 +61,6 @@ The Conda environment is provided.
 - scipy
 - pandas
 - gensim
-
 
 ### External software
 
