@@ -42,7 +42,7 @@ def _maskify(seq, mask):
     From "GTG" & "101" to "CXC"
     '''
     if len(seq) != len(mask):
-        raise Error(
+        raise Exception(
             "sequence ('%s') and mask ('%s') have not the same length"
             % (seq, mask) )
     return("".join(
@@ -667,7 +667,7 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         else:
             # not supported yet + it's super long to run!
             # but we could train on `X` only
-            pass
+            raise NotImplementedError("You must provide a `modilefile`.")
         return self
 
 
@@ -681,7 +681,7 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         from ._sentence2vec.sentence2vec import Word, Sentence, sentence_to_vec
 
         if not self.model:
-            raise Error("[ERROR] Model has not been loaded")
+            raise Exception("[ERROR] Model has not been loaded")
 
         sentences = {}
         step = 0
@@ -726,7 +726,7 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         from ._sentence2vec.sentence2vec import sentence_to_vec
 
         if not self.model:
-            raise Error("Model has not been loaded")
+            raise Exception("Model has not been loaded")
 
         if self.verbose >= 1:
             print("[INFO] Extracting sentences (1/2)")
@@ -803,7 +803,7 @@ class SequenceAbundanceModel(BaseEstimator, TransformerMixin):
     def _get_file_format(self, file):
         return file.split(".")[-1].upper()
         # if ext not in self._available_format:
-        #     raise Error("File format '%s' is not supported")
+        #     raise Exception("File format '%s' is not supported")
         # return ext
 
     def fit(self, X):
