@@ -39,7 +39,8 @@ def _maskify(seq, mask):
     From "ATGCGT" & "110011" to "ATXXGT"
     From "GTG" & "101" to "CXC"
     '''
-    assert len(seq) == len(mask), f"sequence ('{seq}') and mask ('{mask}') have not the same length"
+    assert len(seq) == len(mask),
+        f"sequence ('{seq}') and mask ('{mask}') have not the same length"
     return "".join(_revcomp([x if y == '1' else 'x' for x, y in zip(seq, mask)]))
 
 def _spaced_kmer_pool(kargs):
@@ -153,6 +154,9 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
         import re
         if not re.search('^1[01]*?1$', self.mask):
             raise ValueError("Mask '%s' is not valid" % (self.mask))
+
+        if self.mask != self.mask[::-1]:
+            raise ValueError("Mask '%s' is not palindromic" % (self.mask))
 
         if not re.search('0', self.mask):
             self.k = len(self.mask)
@@ -764,15 +768,15 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
 
 #-------------------------------------------------------------------------------
 
-class SequenceAbundanceModel(BaseEstimator, TransformerMixin):
-    '''Model sequence according to their relative abundance'''
+class SequenceCoverageModel(BaseEstimator, TransformerMixin):
+    '''Model sequence according to their coverage'''
     def __init__(self,
                  abdfiles,
                  verbose=0,
                  n_jobs=1,
                  prefix="cov_"
                 ):
-        self.abdfiles = { x: self._get_file_format(x) for x in abdfiles }
+        self.abdfiles = {x: self._get_file_format(x) for x in abdfiles}
         self.verbose = verbose
         self.n_jobs = n_jobs
         self._available_format = ['CSV', 'TSV']  #, 'BAM', 'SAM', 'FASTA']
@@ -807,9 +811,19 @@ class SequenceAbundanceModel(BaseEstimator, TransformerMixin):
 
         X: DNASequenceBank
         '''
+        return self
+        
+
+    def transform(self, X):
+        '''
+        Parameter
+        ---------
+
+        X: DNASequenceBank
+        '''
         import pandas as pd
 
-        self.data = pd.DataFrame(index=list(X.keys()))
+        data = pd.DataFrame(index=list(X.keys()))
         i = 0
         for file, ext in self.abdfiles.items():
             if ext not in self._available_format:
@@ -818,11 +832,13 @@ class SequenceAbundanceModel(BaseEstimator, TransformerMixin):
             if ext == "CSV":
                 tmp = pd.read_csv(file, index_col=0)
                 tmp.columns = (self.prefix + str(i))
-                self.data.join(tmp, how='outer')
+                data.join(tmp, how='outer')
             elif ext == "TSV":
                 tmp = pd.read_csv(file, index_col=0, sep="\t", columns=None)
                 tmp.columns = (self.prefix+str(i))
-                self.data = self.data.join(tmp, how='outer')
+                data = data.join(tmp, how='outer')
+            # elif ext == "FASTA":
+            #     # run gattaca
             else:
                 raise ValueError(f"Do not know what to do with format {ext}")
             # elif ext == "SAM":
@@ -833,13 +849,4 @@ class SequenceAbundanceModel(BaseEstimator, TransformerMixin):
             #     self.data = self._map_fasta(file, self.ref_contigs)
             i += 1
 
-        return self
-
-    def transform(self, X):
-        '''
-        Parameter
-        ---------
-
-        X: DNASequenceBank
-        '''
-        return self.data
+        return data

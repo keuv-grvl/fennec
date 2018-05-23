@@ -6,7 +6,7 @@ from ._models import (
         InterNucleotideDistanceModel,
         CodingDensityModel,
         Contig2VecModel,
-        SequenceAbundanceModel
+        SequenceCoverageModel
     )
 
 from ._sentence2vec.sentence2vec import Word, Sentence, get_word_frequency, sentence_to_vec
@@ -18,5 +18,5 @@ __all__ = [
         'InterNucleotideDistanceModel',
         'CodingDensityModel',
         'Contig2VecModel',
-        'SequenceAbundanceModel'
+        'SequenceCoverageModel'
     ]
