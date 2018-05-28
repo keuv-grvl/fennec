@@ -39,8 +39,7 @@ def _maskify(seq, mask):
     From "ATGCGT" & "110011" to "ATXXGT"
     From "GTG" & "101" to "CXC"
     '''
-    assert len(seq) == len(mask),
-        f"sequence ('{seq}') and mask ('{mask}') have not the same length"
+    assert len(seq) == len(mask), f"sequence ('{seq}') and mask ('{mask}') have not the same length"
     return "".join(_revcomp([x if y == '1' else 'x' for x, y in zip(seq, mask)]))
 
 def _spaced_kmer_pool(kargs):
