@@ -783,11 +783,18 @@ class SequenceCoverageModel(BaseEstimator, TransformerMixin):
         '''
         Return per-sequence abundance from `abdfiles`.
 
-        Parameter
-        ---------
+        `abdfiles` could be constructed using the GATTACA software as follows:
+            gattaca index -i /path/to/you/file.fasta
+            gattaca lookup -i /path/to/you/file.fasta.k31.gatc -c /path/to/you/file.fasta -o /path/to/you/file.coverage.csv -m
+
+        Then you can use `/path/to/you/file.coverage.csv` as `abdfiles`
+            cov = fennec.SequenceCoverageModel(("DATA/S.coverage.csv",))
+
+        Parameters
+        ----------
 
         abdfiles: list[string]
-            Files contains average coverage
+            Files contains coverage
 
         verbose:  int (default: 0)
             Verbosity level.
@@ -829,15 +836,20 @@ class SequenceCoverageModel(BaseEstimator, TransformerMixin):
                 print("Skipping '%s': format '%s' is not supported" % (file, ext))
                 continue
             if ext == "CSV":
-                tmp = pd.read_csv(file, index_col=0)
-                tmp.columns = (self.prefix + str(i))
-                data.join(tmp, how='outer')
+                tmp = pd.read_csv(file, header=None)
+                tmp.columns = (self.prefix + str(i), )
+                tmp.index = X.keys()
+                data = data.join(tmp, how='outer')
             elif ext == "TSV":
                 tmp = pd.read_csv(file, index_col=0, sep="\t", columns=None)
-                tmp.columns = (self.prefix+str(i))
+                tmp.columns = (self.prefix + str(i), )
+                tmp.index = X.keys()
                 data = data.join(tmp, how='outer')
             # elif ext == "FASTA":
-            #     # run gattaca
+            #   tmpfastapath = X.to_fasta()
+            #   $ gattaca index -i tmpfastapath
+            #   $ gattaca lookup -i f"{tmpfastapath}.k31.gatc" -c tmpfastapath -o f"{tmpfastapath}.csv" -m
+            #   # read {tmpfastapath}.csv
             else:
                 raise ValueError(f"Do not know what to do with format {ext}")
             # elif ext == "SAM":
