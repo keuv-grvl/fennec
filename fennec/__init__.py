@@ -1,5 +1,5 @@
 
-from ._utils import DNASequenceBank
+from ._dnasequencebank import DNASequenceBank
 
 from ._models import (
         MaskedKmerModel,
