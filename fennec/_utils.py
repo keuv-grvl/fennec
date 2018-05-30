@@ -285,8 +285,7 @@ def pcacomp_to_model(Pcomp, models, n, min_coeff=0.3, max_pval=0.05, outfile=Non
     '''
     import sys
     import pandas as pd
-    from scipy.stats import zscore
-    from scipy.stats import pearsonr, spearmanr
+    from scipy.stats import zscore, pearsonr, spearmanr
     if outfile is not None:
         f = open(outfile, "a")
     else:
