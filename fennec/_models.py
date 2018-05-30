@@ -699,7 +699,7 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
             print("[INFO] Converting sentences to vectors (2/2)")
 
         seqids = list(sentences.keys())
-        vectors = sentence_to_vec(list(sentences.values()), self.model.vector_size)
+        vectors = sentence_to_vec(list(sentences.values()), self.model.vector_size, debug=self.verbose >= 3)
         d = dict(zip(seqids, vectors))
         del sentences, seqids, vectors
 
