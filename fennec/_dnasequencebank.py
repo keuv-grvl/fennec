@@ -206,6 +206,8 @@ class DNASequenceBank(dict):
                 )
             )
 
+        return self
+
     def to_fasta(self, ids=None, compress=False, append=False):
         """
         Export splitted sequences to a FASTA file.
@@ -379,6 +381,7 @@ class DNASequenceBank(dict):
             DNASequenceBank._store_sparse_mat(
                 self.mustlink_matrix, outfile, "_data_mustlink_matrix"
             )
+            return self
         except:
             print(f"[ERROR] while writing to {outfile}")
             sys.exit(1)
