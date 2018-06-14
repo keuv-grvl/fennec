@@ -46,226 +46,6 @@ def _print_progressbar(step, maxi, msg="", char="=", width=50):
     )
 
 
-def run_prodigal(
-    execpath, inputfile, outputfile="tmp.prodigal.gff", force=False, verbose=0, n_jobs=1
-):
-    """
-    Predict genes from `inputfile` (FASTA format) using Prodigal.
-
-    Returns the Prodigal return code, or -1 if `outputfile` already exists.
-
-
-    Parameters
-    ----------
-
-    execpath: str
-        Path of the Prodigal executable.
-
-    inputfile: str
-        Fasta file to predict genes from.
-
-    outputfile: str (default: "tmp.prodigal.gff")
-        Name of the GFF output file.
-
-    force: bool (default: False)
-        Choose to run Prodigal or not if `outputfile` already exists.
-
-    verbose: int (default: 0)
-        Verbosity level.
-
-    n_jobs: int (default: 1)
-        Ignored.
-
-    """
-    import os
-    import subprocess
-    import sys
-    from skbio.io import read as FastaReader
-
-    retcode = -1
-    if force or not os.path.isfile(outputfile):
-        nb_seq = sum(1 for x in FastaReader(inputfile, format="fasta", verify=True))
-        i = 0
-        cmd = [execpath, "-q", "-f gff", "-i", inputfile]
-        if verbose >= 1:
-            print("[INFO] Predicting genes with Prodigal")
-            print("[INFO] Running '%s'" % (" ".join(cmd)))
-        with open(outputfile, "w") as outfile:
-            p = subprocess.Popen(
-                " ".join(cmd), shell=True, stdout=subprocess.PIPE
-            )  # , stderr= subprocess.DEVNULL)
-            seqid = "NULL"
-            for x in p.stdout:
-                xx = x.decode(sys.getdefaultencoding()).rstrip()
-                print(xx, file=outfile)
-                if xx.startswith("# Sequence Data:"):
-                    seqid = xx.split('"')[1]
-                    i += 1
-                    if verbose >= 2:
-                        _print_progressbar(i, nb_seq, msg=seqid)
-            p.wait()
-            p.terminate()
-            if verbose >= 2:
-                print()
-            retcode = p.returncode
-
-    return (retcode, outputfile)
-
-
-def run_fraggenescan(
-    execpath,
-    inputfile,
-    outputfile="tmp.fraggenescan.gff",
-    force=False,
-    verbose=0,
-    n_jobs=1,
-):
-    """
-    Predict genes from `inputfile` (FASTA format) using FragGeneScan.
-
-    Returns the FragGeneScan return code, or -1 if `outputfile` already exists.
-
-
-    Parameters
-    ----------
-
-    execpath: str
-        Path of the 'run_FragGeneScan.pl' script.
-
-    inputfile: str
-        Fasta file to predict genes from.
-
-    outputfile: str (default: "tmp.fraggenescan.gff")
-        Name of the GFF output file.
-
-    force: bool (default: False)
-        Choose to run FragGeneScan or not if `outputfile` already exists.
-
-    verbose: int (default: 0)
-        Verbosity level.
-
-    n_jobs: int (default: 1)
-        Number of CPU FragGeneScan will use.
-
-    """
-    import os
-    import subprocess
-
-    retcode = -1
-    outputlabel = os.path.splitext(outputfile)[0]
-    if force or not os.path.isfile(outputfile):
-        cmd = [
-            execpath,
-            "-genome=" + str(inputfile),
-            "-out=" + str(outputlabel),
-            "-thread=" + str(n_jobs),
-            "-complete=1",
-            "-train=complete",
-        ]
-        if verbose >= 1:
-            print("[INFO] Predicting genes with FragGeneScan")
-            print("[INFO] Running '%s'" % (" ".join(cmd)))
-        res = subprocess.run(cmd)
-        retcode = res.returncode
-
-    return (retcode, outputfile)
-
-
-def run_metageneannotator(
-    execpath,
-    inputfile,
-    outputfile="tmp.metageneannotator.gff",
-    force=False,
-    verbose=0,
-    n_jobs=1,
-):
-    """
-    Predict genes from `inputfile` (FASTA format) using MetaGeneAnnotator.
-
-    MetaGeneAnnotator does not output a GFF3 file. Thus the output is parsed
-    and formatted to comply with the GFF3 standard.
-
-    Returns the MetaGeneAnnotator return code, or -1 if `outputfile` already exists.
-
-
-    Parameters
-    ----------
-
-    execpath: str
-        Path of the MetaGeneAnnotator executable.
-
-    inputfile: str
-        Fasta file to predict genes from.
-
-    outputfile: str (default: "tmp.metageneannotator.gff")
-        Name of the GFF output file.
-
-    force: bool (default: False)
-        Choose to run MetaGeneAnnotator or not if `outputfile` already exists.
-
-    verbose: int (default: 0)
-        Verbosity level.
-
-    n_jobs: int (default: 1)
-        Ignored.
-    """
-    import os
-    import subprocess
-    import sys
-    from skbio.io import read as FastaReader
-
-    retcode = -1
-    if force or not os.path.isfile(outputfile):
-        if verbose >= 1:
-            print("[INFO] Predicting genes with MetaGeneAnnotator")
-        cmd = [execpath, "-m", inputfile]
-        if verbose >= 1:
-            print("[INFO] Running '%s'" % (" ".join(cmd)))
-        nb_seq = sum(1 for x in FastaReader(inputfile, format="fasta", verify=True))
-        i = 0
-        with open(outputfile, "w") as outfile:
-            p = subprocess.Popen(
-                " ".join(cmd),
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
-            print("##gff-version 3", file=outfile)  # GFF3 header
-            seqid = "null"
-            for x in p.stdout:
-                xx = x.decode(sys.getdefaultencoding()).rstrip()
-                if xx.startswith("#"):
-                    if not xx.startswith("# gc") and not xx.startswith("# self"):
-                        seqid = xx[2:]
-                        i += 1
-                        if verbose >= 2:
-                            _print_progressbar(i, nb_seq, msg=seqid)
-                else:
-                    (_, start, end, strand, frame, _, score, _, _, _, _) = xx.split(
-                        "\t"
-                    )
-                    print(
-                        seqid,
-                        "MGA",
-                        "gene",
-                        start,
-                        end,
-                        score,
-                        strand,
-                        frame,
-                        "-",
-                        sep="\t",
-                        file=outfile,
-                    )
-            p.wait()
-            p.terminate()
-            if verbose >= 2:
-                print()
-            retcode = p.returncode
-
-    return (retcode, outputfile)
-
-
 def boxplot(x, g, n, min_nb_seq=25):
     """
     Plot a violon plot using `x` values into classes defined by `g`.
@@ -299,6 +79,72 @@ def boxplot(x, g, n, min_nb_seq=25):
     axes.set_ylabel("Silhouette scores")
     plt.tight_layout()
     # plt.show()
+
+
+def draw_2D_plot(
+    D,
+    n,
+    title="",
+    labels=None,
+    n_iter=1500,
+    metric="cosine",
+    cmap="tab20",
+    figsize=(9, 8),
+    outfile="tmp.tsne.data.csv",
+    figfmt="png",
+    verbose=0,
+    force=False,
+    sklearn_tsne=False,
+):
+    """
+    Visualization
+    """
+    assert hasattr(D, "index"), "D is not a pandas.DataFrame?"
+
+    import pandas as pd
+    from matplotlib import pyplot as plt
+    from os import cpu_count
+
+    tsne_args = {
+        "n_components": 2,
+        "init": "random",
+        "n_iter": n_iter,
+        "metric": metric,
+        "verbose": verbose,
+    }
+
+    try:
+        if force:
+            raise Exception("Forcing!")
+        D_tsne = pd.read_csv(outfile, index_col=0)
+    except:
+        if sklearn_tsne:
+            from sklearn.manifold import TSNE
+        else:
+            from MulticoreTSNE import MulticoreTSNE as TSNE
+
+            tsne_args["n_jobs"] = cpu_count()
+
+        from scipy.stats import zscore
+        from sklearn.decomposition import PCA
+
+        if D.shape[1] > 30:  # reduce dimensionality to 30 if needed
+            if verbose >= 2:
+                print(f"[PCA] reducing from {D.shape[1]} to 30 attributes")
+            D_pca = PCA(30).fit_transform(zscore(D))
+        else:
+            D_pca = D.as_matrix()
+
+        tsne = TSNE(**tsne_args)
+        D_tsne = pd.DataFrame(
+            tsne.fit_transform(D_pca), index=D.index, columns=("x", "y")
+        )
+        D_tsne.to_csv(outfile)  # write data for next call
+
+    D_tsne.shape
+    plt.figure(figsize=figsize, dpi=300)
+    plt.title(f"{title} - step {n}")
+    plt.scatter(D_tsne.x, D_tsne.y, s=3, cmap=cmap, c=labels)
 
 
 def pcacomp_to_model(Pcomp, models, n, outfile=None):
@@ -374,7 +220,7 @@ def load_models(h5file, models):
 
 def myKernelPCA(
     X,
-    inertia=0.9,
+    inertia,
     kernel="cosine",
     index=None,
     t=5,
@@ -390,7 +236,7 @@ def myKernelPCA(
     X: numpy.ndarray or pandas.DataFrame
         Values to transform
 
-    inertia: float (default: 0.9)
+    inertia: float
         Percentage of inertia to keep
         0.0 < inertia <= 1.0
 
@@ -663,62 +509,6 @@ def reassign_tiny_cluster_mustlink(vbgmm_clus, D_ml, verbose=False):
         if verbose:
             print(f"\t{res[seqid]}")
     return res
-
-
-def draw_2D_plot(
-    D,
-    n,
-    labels=None,
-    n_iter=1500,
-    metric="cosine",
-    title="",
-    outfile="tmp.tsne.data.csv",
-    cmap="tab20",
-    figsize=(9, 8),
-    figfmt="png",
-    verbose=0,
-    force=False,
-):
-    """
-    Visualization
-    """
-    assert hasattr(D, "index"), "D is not a pandas.DataFrame?"
-    import pandas as pd
-    from matplotlib import pyplot as plt
-
-    try:
-        if force:
-            raise Exception("Forcing!")
-        D_tsne = pd.read_csv(outfile, index_col=0)
-    except:
-        # from sklearn.manifold import TSNE
-        from MulticoreTSNE import MulticoreTSNE as TSNE
-        from sklearn.decomposition import PCA
-
-        if D.shape[1] > 30:  # reduce dimensionality to 30 if needed
-            if verbose >= 2:
-                print(f"[PCA] reducing from {D.shape[1]} to 30 attributes")
-            D_pca = PCA(30).fit_transform(D)
-        else:
-            D_pca = D.as_matrix()
-
-        tsne = TSNE(
-            n_components=2,
-            init="random",
-            n_iter=n_iter,
-            metric=metric,
-            verbose=verbose,
-            n_jobs=8,
-        )
-        D_tsne = pd.DataFrame(
-            tsne.fit_transform(D_pca), index=D.index, columns=("x", "y")
-        )
-        D_tsne.to_csv(outfile)
-
-    D_tsne.shape
-    plt.figure(figsize=figsize, dpi=300)
-    plt.title(f"{title} - step {n}")
-    plt.scatter(D_tsne.x, D_tsne.y, s=3, cmap=cmap, c=labels)
 
 
 def extract_cluster_silhouette(

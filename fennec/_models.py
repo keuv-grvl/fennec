@@ -8,129 +8,29 @@ from ._utils import _print_progressbar
 # See https://stackoverflow.com/questions/32321324/pool-within-a-class-in-python
 
 # src: http://arep.med.harvard.edu/labgc/adnan/projects/Utilities/revcomp.html
-_BASE_COMPLEMENT = {
-    "A": "T",
-    "T": "A",
-    "G": "C",
-    "C": "G",
-    "Y": "R",
-    "R": "Y",
-    "S": "S",
-    "W": "W",
-    "K": "M",
-    "M": "K",
-    "B": "V",
-    "D": "H",
-    "H": "D",
-    "V": "B",
-    "N": "N",
-    "x": "x",
-}
-
-
-def _revcomp(dna):
-    """
-    Get the reference sequence for a dna sequence.
-    Reference sequence is the lowest (alphabetically) between the sequence
-    and its reversed-complemented counterpart.
-    Example:
-      "CTAA" returns ('C, 'T', 'A', 'A')
-      "TTAG" returns ('C, 'T', 'A', 'A')
-    """
-    dna = tuple(dna)
-    rcdna = tuple(map(lambda x: x.replace(x, _BASE_COMPLEMENT[x]), dna[::-1]))
-    if dna < rcdna:
-        return dna
-    else:
-        return rcdna
-
-
-def _maskify(seq, mask):
-    """
-    Apply a mask to a DNA sequences.
-
-    From "ATGCGT" & "110011" to "ATXXGT"
-    From "GTG" & "101" to "CXC"
-    """
-    assert len(seq) == len(
-        mask
-    ), f"sequence ('{seq}') and mask ('{mask}') have not the same length"
-    return "".join(_revcomp([x if y == "1" else "x" for x, y in zip(seq, mask)]))
-
-
-def _spaced_kmer_pool(kargs):
-    """
-    Count features (defined by `mask`) from a sequence.
-
-    Input args:
-        ((sequenceid, sequence), mask) = kargs
-
-    Output:
-        (sequence_id, mask, norm_feature_count)
-
-        - sequence_id : the input sequence id
-        - mask : the apply maks
-        - norm_feature_count : Pandas DataFrame of count
-
-    Example:
-        (sid,msk,nfc) = self._spaced_kmer_pool( [ ('SEQ1', 'ATGCGTA'), '101' ] )
-
-    """
-    import pandas as pd
-    from collections import Counter
-
-    ((sid, seq), mask) = kargs
-    ftlist = list()
-    for i in range(0, len(seq) - len(mask) + 1):
-        masked = _maskify(str(seq[i : i + len(mask)]), mask)
-        if "N" not in masked:
-            ftlist.append(masked)
-    ftcnt = Counter(ftlist)
-    del ftlist
-    ftdf = pd.DataFrame(data=ftcnt, index=[sid]).fillna(0).astype(int).T
-    del ftcnt
-    ftnorm = ftdf
-    # ftnorm = ftdf / ftdf.sum() # vraiment pas sûr de mon coup
-    # ftnorm = np.log(ftdf.divide(ftdf.sum(axis=0),axis=1)) # CONCOCT-like normalization
-    return (sid, mask, ftnorm)
-
-
-def _contiguous_kmer_pool(kargs):
-    """
-    Count features of length `k` from a sequence.
-
-    Input args:
-        ((sequenceid, sequence), k) = kargs
-
-    Output:
-        (sequence_id, mask, feature_count)
-
-        - sequence_id : the input sequence id
-        - mask : the apply maks
-        - feature_count : Pandas DataFrame of count
-
-    Example:
-        (sid,msk,nfc) = _contiguous_kmer_pool( [ ('SEQ1', 'ATGCGTATG'), 3 ] )
-
-    """
-    import pandas as pd
-    from collections import Counter
-
-    ((sid, seq), k) = kargs
-    ftlist = list()
-    for i in range(0, len(seq) - k + 1):
-        masked = "".join(_revcomp(seq[i : i + k]))
-        if "N" not in masked:
-            ftlist.append(masked)
-    ftcnt = Counter(ftlist)
-    del ftlist
-    ftdf = pd.DataFrame(data=ftcnt, index=[sid]).fillna(0).astype(int).T
-    del ftcnt
-    return (sid, k, ftdf)
 
 
 class MaskedKmerModel(BaseEstimator, TransformerMixin):
     """Extract (masked) k-mer composition from a DNASequenceBank."""
+
+    _BASE_COMPLEMENT = {
+        "A": "T",
+        "T": "A",
+        "G": "C",
+        "C": "G",
+        "Y": "R",
+        "R": "Y",
+        "S": "S",
+        "W": "W",
+        "K": "M",
+        "M": "K",
+        "B": "V",
+        "D": "H",
+        "H": "D",
+        "V": "B",
+        "N": "N",
+        "x": "x",
+    }
 
     def __init__(self, mask, mode="strict", verbose=0, n_jobs=1):
         """Extract (masked) k-mer composition from a DNASequenceBank.
@@ -156,18 +56,121 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
             Number of parallel jobs to run for Kmer extraction.
 
         """
-        # parameters
         if mode not in ["iupac", "strict"]:
-            raise ValueError("mode must be 'strict' or 'iupac'. Given: '%s'" % mode)
+            raise ValueError(f"mode must be 'strict' or 'iupac'. Given: '{mode}'")
 
         self.mask = mask
         self.mode = mode
         self.verbose = verbose
         self.n_jobs = n_jobs
-        # get functions to use with Pool
-        self._spaced_kmer_pool = _spaced_kmer_pool
-        self._contiguous_kmer_pool = _contiguous_kmer_pool
         self.k = None
+
+    @staticmethod
+    def _revcomp(dna):
+        """
+        Get the reference sequence for a dna sequence.
+        Reference sequence is the lowest (alphabetically) between the sequence
+        and its reversed-complemented counterpart.
+        Example:
+        "CTAA" returns ('C, 'T', 'A', 'A')
+        "TTAG" returns ('C, 'T', 'A', 'A')
+        """
+        dna = tuple(dna)
+        rcdna = tuple(
+            map(lambda x: x.replace(x, MaskedKmerModel._BASE_COMPLEMENT[x]), dna[::-1])
+        )
+        if dna < rcdna:
+            return dna
+        else:
+            return rcdna
+
+    @staticmethod
+    def _maskify(seq, mask):
+        """
+        Apply a mask to a DNA sequences.
+
+        From "ATGCGT" & "110011" to "ATXXGT"
+        From "GTG" & "101" to "CXC"
+        """
+        assert len(seq) == len(
+            mask
+        ), f"sequence ('{seq}') and mask ('{mask}') have not the same length"
+        return "".join(
+            MaskedKmerModel._revcomp(
+                [x if y == "1" else "x" for x, y in zip(seq, mask)]
+            )
+        )
+
+    @staticmethod
+    def _spaced_kmer_pool(kargs):
+        """
+        Count features (defined by `mask`) from a sequence.
+
+        Input args:
+            ((sequenceid, sequence), mask) = kargs
+
+        Output:
+            (sequence_id, mask, norm_feature_count)
+
+            - sequence_id : the input sequence id
+            - mask : the apply maks
+            - norm_feature_count : Pandas DataFrame of count
+
+        Example:
+            (sid,msk,nfc) = self._spaced_kmer_pool( [ ('SEQ1', 'ATGCGTA'), '101' ] )
+
+        """
+        import pandas as pd
+        from collections import Counter
+
+        ((sid, seq), mask) = kargs
+        ftlist = list()
+        for i in range(0, len(seq) - len(mask) + 1):
+            masked = MaskedKmerModel._maskify(str(seq[i : i + len(mask)]), mask)
+            if "N" not in masked:
+                ftlist.append(masked)
+        ftcnt = Counter(ftlist)
+        del ftlist
+        ftdf = pd.DataFrame(data=ftcnt, index=[sid]).fillna(0).astype(int).T
+        del ftcnt
+        ftnorm = ftdf
+        # ftnorm = ftdf / ftdf.sum() # vraiment pas sûr de mon coup
+        # ftnorm = np.log(ftdf.divide(ftdf.sum(axis=0),axis=1)) # CONCOCT-like normalization
+        return (sid, mask, ftnorm)
+
+    @staticmethod
+    def _contiguous_kmer_pool(kargs):
+        """
+        Count features of length `k` from a sequence.
+
+        Input args:
+            ((sequenceid, sequence), k) = kargs
+
+        Output:
+            (sequence_id, mask, feature_count)
+
+            - sequence_id : the input sequence id
+            - mask : the apply maks
+            - feature_count : Pandas DataFrame of count
+
+        Example:
+            (sid,msk,nfc) = MaskedKmerModel._contiguous_kmer_pool( [ ('SEQ1', 'ATGCGTATG'), 3 ] )
+
+        """
+        import pandas as pd
+        from collections import Counter
+
+        ((sid, seq), k) = kargs
+        ftlist = list()
+        for i in range(0, len(seq) - k + 1):
+            masked = "".join(MaskedKmerModel._revcomp(seq[i : i + k]))
+            if "N" not in masked:
+                ftlist.append(masked)
+        ftcnt = Counter(ftlist)
+        del ftlist
+        ftdf = pd.DataFrame(data=ftcnt, index=[sid]).fillna(0).astype(int).T
+        del ftcnt
+        return (sid, k, ftdf)
 
     def fit(self, X):
         import re
@@ -184,9 +187,9 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
-        import itertools
-        from time import sleep
         import pandas as pd
+        from itertools import product
+        from time import sleep
         from multiprocessing import Pool
 
         if self.verbose >= 1:
@@ -198,13 +201,13 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
         if self.k:  # we have a contiguous kmer, do not use masking (faster)
             if self.verbose >= 3:
                 print("[INFO] Using contiguous kmer method")
-            z = itertools.product(list(X.items()), (self.k,))
-            result = p.map_async(self._contiguous_kmer_pool, z)
+            z = product(list(X.items()), (self.k,))
+            result = p.map_async(MaskedKmerModel._contiguous_kmer_pool, z)
         else:  # we have spaced seed, we have to apply masking (spaced kmer)
             if self.verbose >= 3:
                 print("[INFO] Using spaced kmer method")
-            z = itertools.product(list(X.items()), (self.mask,))
-            result = p.map_async(self._spaced_kmer_pool, z)
+            z = product(list(X.items()), (self.mask,))
+            result = p.map_async(MaskedKmerModel._spaced_kmer_pool, z)
 
         maxjob = result._number_left
 
@@ -267,116 +270,11 @@ class MaskedKmerModel(BaseEstimator, TransformerMixin):
 
         X = pd.DataFrame(index=idx).join(lstdt)
         del lstdt, tmpNORM  # clear old data
-        X = X.T.fillna(0)
+        X = X.T.fillna(0).astype(int)
         return X
 
 
 # -------------------------------------------------------------------------------
-
-
-def _get_ind_profiles(seq, K=15):
-    """
-    doi: 10.1016/j.physa.2017.04.064
-
-    2.1. Inter-nucleotide distance in a DNA sequence
-    """
-    import itertools
-    import numpy as np
-
-    # convert 'ATGC' sequences to '0123' sequences
-    n2i = {"A": 0, "T": 1, "G": 2, "C": 3}
-    seqi = []
-    for s in seq:
-        try:
-            seqi.append(n2i[s])
-        except:
-            seqi.append(None)
-
-    lastPos = np.zeros(len(n2i), dtype=int)  # last position of nucleotide
-    save = np.empty((len(n2i), len(n2i)), object)  # should I calculate the distance?
-    count = np.zeros((len(n2i), len(n2i)), dtype=bool)  # distance between 2 nucl
-    cpt = 0
-
-    for c in seqi:
-        if c is None:  # if not ATGC (mostly N)
-            cpt += 1
-            continue
-        for e in n2i.values():
-            if c is None or e is None:
-                continue
-            if count[e][c]:
-                if save[e][c] is None:
-                    save[e][c] = []
-                save[e][c].append(cpt - int(lastPos[e]))
-                count[e][c] = False
-            count[c][e] = True
-        lastPos[c] = cpt
-        cpt += 1
-
-    f0 = np.zeros((len(n2i), len(n2i), K), float)
-
-    for a, b, k in itertools.product(n2i, n2i, range(K)):
-        if save[n2i[a]][n2i[b]] is None:
-            f0[n2i[a]][n2i[b]][k] = 0
-        else:
-            f0[n2i[a]][n2i[b]][k] = save[n2i[a]][n2i[b]].count(k + 1) / len(
-                save[n2i[a]][n2i[b]]
-            )
-
-    return f0.reshape(f0.size)
-
-
-def _get_nearest_dissimilar_distance(seq, K=15):
-    """
-    doi: 10.1016/j.physa.2017.04.064
-
-    2.1. Inter-nucleotide distance in a DNA sequence
-    """
-    import itertools
-    import numpy as np
-
-    nucl = ("A", "T", "G", "C")
-    W = {k: [] for k in nucl}
-    i = 0
-    l = 1
-
-    while i in range(len(seq) - 1):
-        if seq[i] not in nucl:
-            i += 1
-            continue
-        if seq[i] != seq[i + 1]:
-            try:
-                W[seq[i]].append(l)
-            except:
-                W[seq[i]] = []
-                W[seq[i]].append(l)
-            l = 1
-        else:
-            l += 1
-        i += 1
-
-    if seq[i] in nucl:
-        W[seq[i]].append(1)  # count last nucleotide as 1
-
-    f1 = np.empty((len(nucl), K), float)
-
-    for a, k in itertools.product(nucl, range(K)):
-        try:
-            f1[nucl.index(a)][k] = W[a].count(k + 1) / len(W[a])
-        except:
-            f1[nucl.index(a)][k] = 0
-
-    return f1.reshape(f1.size)
-
-
-def _inter_nucleotide_distance_profile(kargs):
-    (sid, seq), K = kargs
-    import numpy as np
-
-    f0 = _get_ind_profiles(seq, K=K)
-    f1 = _get_nearest_dissimilar_distance(seq, K=K)
-    X = np.concatenate([f1, f0])
-    return (sid, X)
 
 
 class InterNucleotideDistanceModel(BaseEstimator, TransformerMixin):
@@ -404,13 +302,119 @@ class InterNucleotideDistanceModel(BaseEstimator, TransformerMixin):
         self.K = K
         self.verbose = verbose
         self.n_jobs = n_jobs
-        self._inter_nucleotide_distance_profile = _inter_nucleotide_distance_profile
+
+    @staticmethod
+    def _get_ind_profiles(seq, K=15):
+        """
+        doi: 10.1016/j.physa.2017.04.064
+
+        2.1. Inter-nucleotide distance in a DNA sequence
+        """
+        import itertools
+        import numpy as np
+
+        # convert 'ATGC' sequences to '0123' sequences
+        n2i = {"A": 0, "T": 1, "G": 2, "C": 3}
+        seqi = []
+        for s in seq:
+            try:
+                seqi.append(n2i[s])
+            except:
+                seqi.append(None)
+
+        lastPos = np.zeros(len(n2i), dtype=int)  # last position of nucleotide
+        save = np.empty(
+            (len(n2i), len(n2i)), object
+        )  # should I calculate the distance?
+        count = np.zeros((len(n2i), len(n2i)), dtype=bool)  # distance between 2 nucl
+        cpt = 0
+
+        for c in seqi:
+            if c is None:  # if not ATGC (mostly N)
+                cpt += 1
+                continue
+            for e in n2i.values():
+                if c is None or e is None:
+                    continue
+                if count[e][c]:
+                    if save[e][c] is None:
+                        save[e][c] = []
+                    save[e][c].append(cpt - int(lastPos[e]))
+                    count[e][c] = False
+                count[c][e] = True
+            lastPos[c] = cpt
+            cpt += 1
+
+        f0 = np.zeros((len(n2i), len(n2i), K), float)
+
+        for a, b, k in itertools.product(n2i, n2i, range(K)):
+            if save[n2i[a]][n2i[b]] is None:
+                f0[n2i[a]][n2i[b]][k] = 0
+            else:
+                f0[n2i[a]][n2i[b]][k] = save[n2i[a]][n2i[b]].count(k + 1) / len(
+                    save[n2i[a]][n2i[b]]
+                )
+
+        return f0.reshape(f0.size)
+
+    @staticmethod
+    def _get_nearest_dissimilar_distance(seq, K=15):
+        """
+        doi: 10.1016/j.physa.2017.04.064
+
+        2.1. Inter-nucleotide distance in a DNA sequence
+        """
+        from itertools import product
+        import numpy as np
+
+        nucl = ("A", "T", "G", "C")
+        W = {k: [] for k in nucl}
+        i = 0
+        l = 1
+
+        while i in range(len(seq) - 1):
+            if seq[i] not in nucl:
+                i += 1
+                continue
+            if seq[i] != seq[i + 1]:
+                try:
+                    W[seq[i]].append(l)
+                except:
+                    W[seq[i]] = []
+                    W[seq[i]].append(l)
+                l = 1
+            else:
+                l += 1
+            i += 1
+
+        if seq[i] in nucl:
+            W[seq[i]].append(1)  # count last nucleotide as 1
+
+        f1 = np.empty((len(nucl), K), float)
+
+        for a, k in product(nucl, range(K)):
+            try:
+                f1[nucl.index(a)][k] = W[a].count(k + 1) / len(W[a])
+            except:
+                f1[nucl.index(a)][k] = 0
+
+        return f1.reshape(f1.size)
+
+    @staticmethod
+    def _inter_nucleotide_distance_profile(kargs):
+        (sid, seq), K = kargs
+        import numpy as np
+
+        f0 = InterNucleotideDistanceModel._get_ind_profiles(seq, K=K)
+        f1 = InterNucleotideDistanceModel._get_nearest_dissimilar_distance(seq, K=K)
+        X = np.concatenate([f1, f0])
+        return (sid, X)
 
     def fit(self, X):
         return self
 
     def transform(self, X):
-        import itertools
+        from itertools import repeat
         from time import sleep
         import pandas as pd
         from multiprocessing import Pool
@@ -419,8 +423,8 @@ class InterNucleotideDistanceModel(BaseEstimator, TransformerMixin):
             print("[INFO] Extracting IND profiles")
         p = Pool(self.n_jobs)
         result = p.map_async(
-            self._inter_nucleotide_distance_profile,
-            zip(list(X.items()), itertools.cycle((self.K,))),
+            InterNucleotideDistanceModel._inter_nucleotide_distance_profile,
+            zip(list(X.items()), repeat(self.K)),
         )
         maxjob = result._number_left
 
@@ -454,7 +458,6 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         tools=["metageneannotator", "prodigal", "fraggenescan"],
-        tmp_fasta="tmp.fennec.fna",
         force=False,
         verbose=0,
         n_jobs=1,
@@ -475,9 +478,6 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
         tools: list[str] (default: ['metageneannotator', 'prodigal', 'fraggenescan'])
             List of gene prediction tools to use.
 
-        tmp_fasta: str (default: "tmp.fennec.fna")
-            File where the DNASequenceBank will be stored (as Fasta)
-
         force: bool (default: False)
             Force the gene prediciton, even if the resultat are already available
 
@@ -489,14 +489,13 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
         """
         import os
         from shutil import which
-        from ._utils import run_prodigal, run_metageneannotator, run_fraggenescan
 
         os.environ["PATH"] = os.environ["PATH"] + ":" + os.path.realpath("bin")
 
         self.force = force
         self.verbose = verbose
         self.n_jobs = n_jobs
-        self.tmp_fasta = tmp_fasta
+        self.tmp_fasta = None
         self._execpaths = {
             # 'tool identifier', : 'executable path'
             "metageneannotator": which("mga"),
@@ -504,9 +503,9 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
             "fraggenescan": which("run_FragGeneScan.pl"),
         }
         self._execfunctions = {
-            "metageneannotator": run_metageneannotator,
-            "prodigal": run_prodigal,
-            "fraggenescan": run_fraggenescan,
+            "metageneannotator": CodingDensityModel._run_metageneannotator,
+            "prodigal": CodingDensityModel._run_prodigal,
+            "fraggenescan": CodingDensityModel._run_fraggenescan,
         }
         self._outputs = {
             "metageneannotator": None,
@@ -523,8 +522,233 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
             if self._execpaths[t]:
                 validated.add(t)
             else:
-                warnings.warn("Cannot find '%s'. Will be ignored." % t)
+                warnings.warn(f"Cannot find '{t}'. Will be ignored.")
         return validated
+
+    @staticmethod
+    def _run_prodigal(
+        execpath,
+        inputfile,
+        outputfile="tmp.prodigal.gff",
+        force=False,
+        verbose=0,
+        n_jobs=1,
+    ):
+        """
+        Predict genes from `inputfile` (FASTA format) using Prodigal.
+
+        Returns the Prodigal return code, or -1 if `outputfile` already exists.
+
+
+        Parameters
+        ----------
+
+        execpath: str
+            Path of the Prodigal executable.
+
+        inputfile: str
+            Fasta file to predict genes from.
+
+        outputfile: str (default: "tmp.prodigal.gff")
+            Name of the GFF output file.
+
+        force: bool (default: False)
+            Choose to run Prodigal or not if `outputfile` already exists.
+
+        verbose: int (default: 0)
+            Verbosity level.
+
+        n_jobs: int (default: 1)
+            Ignored.
+
+        """
+        import os
+        import subprocess
+        import sys
+        from skbio.io import read as FastaReader
+
+        retcode = -1
+        if force or not os.path.isfile(outputfile):
+            nb_seq = sum(1 for x in FastaReader(inputfile, format="fasta", verify=True))
+            i = 0
+            cmd = [execpath, "-q", "-f gff", "-i", inputfile]
+            if verbose >= 1:
+                print("[INFO] Predicting genes with Prodigal")
+                print("[INFO] Running '%s'" % (" ".join(cmd)))
+            with open(outputfile, "w") as outfile:
+                p = subprocess.Popen(
+                    " ".join(cmd), shell=True, stdout=subprocess.PIPE
+                )  # , stderr= subprocess.DEVNULL)
+                seqid = "NULL"
+                for x in p.stdout:
+                    xx = x.decode(sys.getdefaultencoding()).rstrip()
+                    print(xx, file=outfile)
+                    if xx.startswith("# Sequence Data:"):
+                        seqid = xx.split('"')[1]
+                        i += 1
+                        if verbose >= 2:
+                            _print_progressbar(i, nb_seq, msg=seqid)
+                p.wait()
+                p.terminate()
+                if verbose >= 2:
+                    print()
+                retcode = p.returncode
+
+        return (retcode, outputfile)
+
+    @staticmethod
+    def _run_fraggenescan(
+        execpath,
+        inputfile,
+        outputfile="tmp.fraggenescan.gff",
+        force=False,
+        verbose=0,
+        n_jobs=1,
+    ):
+        """
+        Predict genes from `inputfile` (FASTA format) using FragGeneScan.
+
+        Returns the FragGeneScan return code, or -1 if `outputfile` already exists.
+
+
+        Parameters
+        ----------
+
+        execpath: str
+            Path of the 'run_FragGeneScan.pl' script.
+
+        inputfile: str
+            Fasta file to predict genes from.
+
+        outputfile: str (default: "tmp.fraggenescan.gff")
+            Name of the GFF output file.
+
+        force: bool (default: False)
+            Choose to run FragGeneScan or not if `outputfile` already exists.
+
+        verbose: int (default: 0)
+            Verbosity level.
+
+        n_jobs: int (default: 1)
+            Number of CPU FragGeneScan will use.
+
+        """
+        import os
+        import subprocess
+
+        retcode = -1
+        outputlabel = os.path.splitext(outputfile)[0]
+        if force or not os.path.isfile(outputfile):
+            cmd = [
+                execpath,
+                "-genome=" + str(inputfile),
+                "-out=" + str(outputlabel),
+                "-thread=" + str(n_jobs),
+                "-complete=1",
+                "-train=complete",
+            ]
+            if verbose >= 1:
+                print("[INFO] Predicting genes with FragGeneScan")
+                print("[INFO] Running '%s'" % (" ".join(cmd)))
+            res = subprocess.run(cmd)
+            retcode = res.returncode
+
+        return (retcode, outputfile)
+
+    @staticmethod
+    def _run_metageneannotator(
+        execpath,
+        inputfile,
+        outputfile="tmp.metageneannotator.gff",
+        force=False,
+        verbose=0,
+        n_jobs=1,
+    ):
+        """
+        Predict genes from `inputfile` (FASTA format) using MetaGeneAnnotator.
+
+        MetaGeneAnnotator does not output a GFF3 file. Thus the output is parsed
+        and formatted to comply with the GFF3 standard.
+
+        Returns the MetaGeneAnnotator return code, or -1 if `outputfile` already exists.
+
+
+        Parameters
+        ----------
+
+        execpath: str
+            Path of the MetaGeneAnnotator executable.
+
+        inputfile: str
+            Fasta file to predict genes from.
+
+        outputfile: str (default: "tmp.metageneannotator.gff")
+            Name of the GFF output file.
+
+        force: bool (default: False)
+            Choose to run MetaGeneAnnotator or not if `outputfile` already exists.
+
+        verbose: int (default: 0)
+            Verbosity level.
+
+        n_jobs: int (default: 1)
+            Ignored.
+        """
+        import os
+        import subprocess
+        import sys
+        from skbio.io import read as FastaReader
+
+        retcode = -1
+        if force or not os.path.isfile(outputfile):
+            if verbose >= 1:
+                print("[INFO] Predicting genes with MetaGeneAnnotator")
+            cmd = [execpath, "-m", inputfile]
+            if verbose >= 1:
+                print("[INFO] Running '%s'" % (" ".join(cmd)))
+            nb_seq = sum(1 for x in FastaReader(inputfile, format="fasta", verify=True))
+            i = 0
+            with open(outputfile, "w") as outfile:
+                p = subprocess.Popen(
+                    " ".join(cmd),
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )
+                print("##gff-version 3", file=outfile)  # GFF3 header
+                seqid = "null"
+                for x in p.stdout:
+                    xx = x.decode(sys.getdefaultencoding()).rstrip()
+                    if xx.startswith("#"):
+                        if not xx.startswith("# gc") and not xx.startswith("# self"):
+                            seqid = xx[2:]
+                            i += 1
+                            if verbose >= 2:
+                                _print_progressbar(i, nb_seq, msg=seqid)
+                    else:
+                        (_, start, end, strand, frame, _, score, _, _, _, _) = xx.split(
+                            "\t"
+                        )
+                        print(
+                            seqid,
+                            "MGA",
+                            "gene",
+                            start,
+                            end,
+                            score,
+                            strand,
+                            frame,
+                            "-",
+                            sep="\t",
+                            file=outfile,
+                        )
+                p.wait()
+                p.terminate()
+                if verbose >= 2:
+                    print()
+                retcode = p.returncode
+
+        return (retcode, outputfile)
 
     def fit(self, X):
         """
@@ -532,7 +756,7 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
 
         X: DNASequenceBank
         """
-        X.to_fasta(self.tmp_fasta)
+        self.tmp_fasta = X.to_fasta()
 
         for t in self.tools:
             retcode, outputfile = self._execfunctions[t](
@@ -542,7 +766,7 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
                 verbose=self.verbose,
                 n_jobs=self.n_jobs,
             )
-            assert retcode == 0
+            assert retcode == 0, f"Does '{outputfile}' already exists?"
             self._outputs[t] = outputfile
 
         # TODO: check if output files exist
@@ -606,29 +830,13 @@ class CodingDensityModel(BaseEstimator, TransformerMixin):
 # -------------------------------------------------------------------------------
 
 
-def _get_kmers(seq, k):
-    # kmers_list = []
-    for i in range(0, len(seq) - k + 1):
-        km = seq[i : i + k]
-        if not "N" in km:
-            # kmers_list.append(km)
-            yield km
-    # return kmers_list
-
-
-def _get_sentence(kargs):
-    from ._sentence2vec.sentence2vec import Word, Sentence
-
-    ((sid, seq), k, model) = kargs
-    kmers = _get_kmers(seq, k)
-    vectors = [model(x) for x in kmers]
-    words = [Word(None, v) for v in vectors]
-    return (sid, Sentence(words))
-
-
 class Contig2VecModel(BaseEstimator, TransformerMixin):
     """Extract k-mers from sequences, apply a pretrained Dna2Vec model then
     model sequences using sentence2vec."""
+
+    # The Word2Vec model have to be stored as a static attribute to be efficiently
+    # read by `transform_par`, otherwise the parallelization is inefficient.
+    _model = None
 
     def __init__(self, k=4, modelfile="urq", verbose=0, n_jobs=1):
         """
@@ -637,24 +845,23 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
 
         NOTE: Dna2vec produces "legacy" .w2v file. You may want to convert it
         using:
-            from gensim.models.word2vec import Word2Vec
-            model = Word2Vec.load_word2vec_format("dna2vec.output.legacy-w2v")
-            model.save("dna2vec.output.w2v")
-
+            >>> from gensim.models.word2vec import Word2Vec
+            >>> your_model = Word2Vec.load_word2vec_format("dna2vec.output.legacy-w2v")
+            >>> your_model.save("dna2vec.output.w2v")
 
         References
         ----------
          - https://github.com/pnpnpn/dna2vec
          - https://github.com/peter3125/sentence2vec
 
-        Parameter
-        ---------
+        Parameters
+        ----------
 
         k: int (defaut: 4)
             k-mer size
 
         modelfile: str (default: "urq")
-            Either a pretrained Dna2Vec model label (see self.available_models)
+            Either a pretrained dna2vec model label (see `self.available_models`)
             or an model file path.
 
         verbose:  int (default: 0)
@@ -686,11 +893,29 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         self.modelfile = modelfile
         if self.modelfile in self.available_models.keys():
             self.modelfile = self.available_models[self.modelfile]
-        self.model = None  # word2vec model will be loaded by .fit()
         self.verbose = verbose
         self.n_jobs = n_jobs
-        self._get_sentence = _get_sentence
-        # self._word_vec = self.model.wv.word_vec  # shorcut to get vector, 7x faster than `self.model[word]`
+
+    @staticmethod
+    def _get_kmers(seq, k):
+        # kmers_list = []
+        for i in range(0, len(seq) - k + 1):
+            km = seq[i : i + k]
+            if not "N" in km:
+                # kmers_list.append(km)
+                yield km
+        # return kmers_list
+
+    @staticmethod
+    def _get_sentence_par(kargs):
+        from ._sentence2vec.sentence2vec import Word, Sentence
+
+        ((sid, seq), k) = kargs
+        kmers = Contig2VecModel._get_kmers(seq, k)
+        # shorcut to get vector, 7x faster than `Contig2VecModel.model[word]`
+        vectors = [Contig2VecModel._model.wv.word_vec(x) for x in kmers]
+        words = [Word(None, v) for v in vectors]
+        return (sid, Sentence(words))
 
     def fit(self, X):
         """
@@ -707,23 +932,41 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
             # load the pretrained model
             if self.verbose >= 1:
                 print("[INFO] loading model from '%s'" % (self.modelfile))
-            self.model = word2vec.Word2Vec.load(self.modelfile)
+            Contig2VecModel._model = word2vec.Word2Vec.load(self.modelfile)
         else:
             # not supported yet + it's super long to run!
             # but we could train on `X` only
             raise NotImplementedError("You must provide a `modilefile`.")
         return self
 
+    def _sentences_to_vector(self, sentences):
+        from ._sentence2vec.sentence2vec import sentence_to_vec
+        import pandas as pd
+
+        if self.verbose >= 1:
+            print("[INFO] Converting sentences to vectors (2/2)")
+
+        seqids = list(sentences.keys())
+        vectors = sentence_to_vec(
+            list(sentences.values()),
+            Contig2VecModel._model.vector_size,
+            debug=self.verbose >= 3,
+        )
+        d = dict(zip(seqids, vectors))
+        del sentences, seqids, vectors
+
+        return pd.DataFrame(data=d).T
+
     def transform(self, X):
         """
         Parameter
         ---------
+
         X: DNASequenceBank
         """
-        import pandas as pd
-        from ._sentence2vec.sentence2vec import Word, Sentence, sentence_to_vec
+        from ._sentence2vec.sentence2vec import Word, Sentence
 
-        if not self.model:
+        if not Contig2VecModel._model:
             raise Exception("[ERROR] Model has not been loaded")
 
         sentences = {}
@@ -737,53 +980,45 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
                 step += 1
                 _print_progressbar(step, len(X), msg=sid)
             sentences[sid] = Sentence(
-                [Word(x, self.model[x]) for x in _get_kmers(seq, self.k)]
+                [
+                    Word(
+                        x, Contig2VecModel._model.wv.word_vec(x)
+                    )  # 7x faster than `Contig2VecModel._model[x]`
+                    for x in Contig2VecModel._get_kmers(seq, self.k)
+                ]
             )
 
         if self.verbose >= 2:
             print()
 
         # convert Sentences to vectors
-        if self.verbose >= 1:
-            print("[INFO] Converting sentences to vectors (2/2)")
-
-        seqids = list(sentences.keys())
-        vectors = sentence_to_vec(
-            list(sentences.values()), self.model.vector_size, debug=self.verbose >= 3
-        )
-        d = dict(zip(seqids, vectors))
-        del sentences, seqids, vectors
-
-        return pd.DataFrame(data=d).T
+        return self._sentences_to_vector(sentences)
 
     def transform_par(self, X):
         """
+
+        Note: this function transforms sequences from `DNASequenceBank` to vectors in
+        parallel using a `multiprocessing.Pool`. This involves a large memory
+        consumption if `self.n_jobs` is set too high.
 
         Parameter
         ---------
 
         X: DNASequenceBank
         """
-        import itertools
-        import pandas as pd
+        from itertools import repeat
         from multiprocessing import Pool
         from time import sleep
-        from ._sentence2vec.sentence2vec import sentence_to_vec
 
-        if not self.model:
+        if not Contig2VecModel._model:
             raise Exception("Model has not been loaded")
 
         if self.verbose >= 1:
             print("[INFO] Extracting sentences (1/2)")
 
         p = Pool(self.n_jobs)
-        z = zip(
-            X.items(),
-            itertools.repeat(self.k),
-            itertools.repeat(self.model.wv.word_vec),
-        )
-        result = p.map_async(_get_sentence, z)
-
+        z = zip(X.items(), repeat(self.k))
+        result = p.map_async(Contig2VecModel._get_sentence_par, z)
         maxjob = result._number_left
 
         if self.verbose >= 2:
@@ -798,6 +1033,7 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
             print()
         else:
             result.wait()
+
         p.terminate()
 
         sentences = {k: v for k, v in result.get()}
@@ -806,16 +1042,8 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         if self.verbose >= 2:
             print()
 
-        # convert Sentence to vector
-        if self.verbose >= 1:
-            print("[INFO] Converting sentences to vectors (2/2)")
-
-        seqids = list(sentences.keys())
-        vectors = sentence_to_vec(list(sentences.values()), self.model.vector_size)
-        d = dict(zip(seqids, vectors))
-        del sentences, seqids, vectors
-
-        return pd.DataFrame(data=d).T
+        # convert Sentences to vectors
+        return self._sentences_to_vector(sentences)
 
 
 # -------------------------------------------------------------------------------
