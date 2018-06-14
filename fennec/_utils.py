@@ -204,13 +204,15 @@ def load_models(h5file, models):
     from fennec import DNASequenceBank
 
     M = {}
+    idx = None
     with pd.HDFStore(h5file) as hdf:
         available_models = hdf.keys()
     for m in models:
         key = "/rawmodel/{}".format(m)
         if key in available_models:
             M[m] = pd.read_hdf(h5file, key)
-            idx = M[m].index
+            if idx is None:  # load it once
+                idx = M[m].index
         else:
             raise Exception("[ERROR] CANNOT LOAD '{}'".format(key))
             # sys.exit(1)
@@ -219,14 +221,7 @@ def load_models(h5file, models):
 
 
 def myKernelPCA(
-    X,
-    inertia,
-    kernel="cosine",
-    index=None,
-    t=5,
-    min_comp=5,
-    n_jobs=1,
-    verbose=False,
+    X, inertia, kernel="cosine", index=None, t=5, min_comp=5, n_jobs=1, verbose=False
 ):
     """
     Perform KernelPCA on `X` then keep only `inertia`.
