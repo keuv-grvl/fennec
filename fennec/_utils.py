@@ -48,7 +48,15 @@ def _print_progressbar(step, maxi, msg="", char="=", width=50):
 
 def boxplot(x, g, n, min_nb_seq=25):
     """
-    Plot a violon plot using `x` values into classes defined by `g`.
+    Boxplot of `x` values into classes defined by `g`.
+
+    Parameters
+    ----------
+
+    x
+
+    g
+
     """
     import numpy as np
     from matplotlib import pyplot as plt
@@ -72,7 +80,7 @@ def boxplot(x, g, n, min_nb_seq=25):
     # axes.axhline(y=x.mean(), color='green', linewidth=1, alpha=.5)
     axes.axhline(y=x.median(), color="blue", linewidth=1, alpha=.5)
     axes.boxplot(d, sym=".", whis=[10, 90])
-    axes.set_title("Violin plot of silhouette scores per sample - iteration %d" % n)
+    axes.set_title("Boxplot of silhouette scores per sample - iteration %d" % n)
     axes.set_xlabel("Cluster ID (nb sequences)")
     # plt.xticks(np.arange(len(categ)) + 1, legends, rotation='vertical')
     plt.xticks(np.arange(len(d)) + 1, legends, rotation="vertical")
@@ -162,32 +170,30 @@ def pcacomp_to_model(Pcomp, models, n, outfile=None):
     """
     import sys
     import pandas as pd
-    from scipy.stats import zscore, pearsonr, spearmanr
+    from scipy.stats import zscore, pearsonr
 
     if outfile is not None:
         f = open(outfile, "a")
     else:
         f = sys.stdout
-    print(
-        ",".join(
-            ["#iter,model,modelIdx,SpearmanCoeff,SpearmanPval,PearsonCoeff,PearsonPval"]
-        ),
-        file=f,
-    )
+    print(",".join(["#iter,model,modelIdx,PearsonCoeff,PearsonPval,absCoeff"]), file=f)
     for m, dd in models.items():
         d = dd.copy().reindex(Pcomp.index)
-        d = pd.DataFrame(zscore(d), index=Pcomp.index).fillna(
-            0
-        )  # zscore might produce NaN
+        d = pd.DataFrame(zscore(d), index=Pcomp.index).fillna(0)  # replace NaN
         for i in range(d.shape[1]):
-            coeff1, pval1 = spearmanr(Pcomp, d[i])
-            coeff2, pval2 = pearsonr(Pcomp, d[i])
+            coeff, pval = pearsonr(Pcomp, d[i])
             print(
-                ",".join([str(x) for x in [n, m, i, coeff1, pval1, coeff2, pval2]]),
-                file=f,
+                ",".join([str(x) for x in [n, m, i, coeff, pval, abs(coeff)]]), file=f
             )
     if outfile is not None:
         f.close()
+
+
+def list_models(h5file):
+    import pandas as pd
+
+    with pd.HDFStore(h5file) as hdf:
+        return [k.replace("/rawmodel/", "") for k in hdf.keys()]
 
 
 def load_models(h5file, models):
@@ -205,11 +211,10 @@ def load_models(h5file, models):
 
     M = {}
     idx = None
-    with pd.HDFStore(h5file) as hdf:
-        available_models = hdf.keys()
+    available_models = list_models(h5file)
     for m in models:
-        key = "/rawmodel/{}".format(m)
-        if key in available_models:
+        if m in available_models:
+            key = "/rawmodel/{}".format(m)
             M[m] = pd.read_hdf(h5file, key)
             if idx is None:  # load it once
                 idx = M[m].index
@@ -221,7 +226,7 @@ def load_models(h5file, models):
 
 
 def myKernelPCA(
-    X, inertia, kernel="cosine", index=None, t=5, min_comp=5, n_jobs=1, verbose=False
+    X, inertia, kernel="cosine", index=None, t=5, min_comp=3, n_jobs=1, verbose=False
 ):
     """
     Perform KernelPCA on `X` then keep only `inertia`.
@@ -262,9 +267,9 @@ def myKernelPCA(
     import numpy as np
     import pandas as pd
 
-    assert 0.0 < inertia <= 1.0, (
-        "Must be: 0.0 < inertia <= 1.0 (got inertia=" + str(inertia) + ")"
-    )
+    assert (
+        0.0 < inertia <= 1.0
+    ), f"Must be: 0.0 < inertia <= 1.0 (got inertia={inertia})"
     from scipy.stats import zscore
     from sklearn.decomposition import KernelPCA
 
@@ -285,7 +290,7 @@ def myKernelPCA(
     return pd.DataFrame(X_kpca, index=X.index)
 
 
-def merge_models(models, index, kpca_params={"n_jobs": 1}):
+def merge_models(models, index, kpca_params={"n_jobs": 1, "verbose": 0}):
     """
     Merge mutliple DNA sequence models. First, each model is processed using
     myKernelPCA with `kpca_params`, then they are concatenated.
@@ -310,24 +315,27 @@ def merge_models(models, index, kpca_params={"n_jobs": 1}):
     #     kmodels[i] = j.result()
     # del jobs
     for i, d in models.items():
+        if kpca_params["verbose"] >= 1:
+            print(f"[INFO] Embedding {i}")
         d = d.reindex(index)
         kmodels[i] = myKernelPCA(d, **kpca_params)
     # - concatenate all kernelmodels
     D = pd.concat(list(kmodels.values()), ignore_index=True, axis=1)
     D.as_matrix().mean(), D.as_matrix().std()  # should be almost 0 and 1 resp.
     samplesize = min(max(len(D) // 4, 3333), len(D))
-    print(
-        "[INFO] Selecting components using PCA using %d individuals (%.2f%%)."
-        % (samplesize, (100 * samplesize / len(D)))
-    )
+    if kpca_params["verbose"] >= 1:
+        print(
+            "[INFO] Selecting components using PCA using %d individuals (%.2f%%)."
+            % (samplesize, (100 * samplesize / len(D)))
+        )
     try:
         # - Pick principal components (99.99% of inertia) to discard "duplicate" attributes between models
         pca = PCA(0.9999)
         D_pca = pca.fit(D.sample(samplesize)).transform(D)
         _, n_comp = D_pca.shape  # may raise an Exception
     except Exception as ee:
-        print(f"Got exception: '{ee}'. Will force PCA to produce 5 components.")
-        pca = PCA(5)
+        print(f"Got exception: '{ee}'. Will force PCA to produce 3 components.")
+        pca = PCA(3)
         D_pca = pca.fit(D.sample(samplesize)).transform(D)
         _, n_comp = D_pca.shape
 
@@ -335,9 +343,38 @@ def merge_models(models, index, kpca_params={"n_jobs": 1}):
     return D_pca, pca.components_, pca.explained_variance_ratio_, n_comp
 
 
+def export_clustering_init_state(D_ml, outfile):
+    """
+    Export the clustering initialization state which strictly respects must-link
+    relationships. This will be used by module `vbgmm`.
+    """
+    import numpy as np
+
+    cluster_nb = -1
+    clusters = {}
+    Is, Js = np.where(D_ml.toarray())
+    seen = set()
+
+    for i, j in zip(Is, Js):
+        if i not in seen:
+            cluster_nb += 1
+            clusters[cluster_nb] = set()
+
+        clusters[cluster_nb].add(i)
+        clusters[cluster_nb].add(j)
+        seen.add(i)
+        seen.add(j)
+
+    with open(outfile, "w") as f:
+        for k, vs in clusters.items():
+            for _ in vs:
+                print(k, file=f)
+
+
 def run_vbgmm(
     D_pca,
     pca_components,
+    D_ml,
     vbgmm_input_dir,
     max_cluster,
     min_length,
@@ -359,6 +396,9 @@ def run_vbgmm(
 
     pca_components: numpy.ndarray
         Components of PCA. Can be obtained with `PCA(0.75).fit(D).components_`
+
+    D_ml: scipy.sparse.dok.dok_matrix
+        Mustlink matrix provided by `load_models`
 
     vbgmm_input_dir: str
         Directory where data will be written
@@ -390,10 +430,14 @@ def run_vbgmm(
     import datetime, os, time, vbgmm, numpy as np, pandas as pd
     from random import randint
 
-    PCA_FILE_BASE = f"{vbgmm_input_dir}PCA_transformed_data_gt{min_length}.csv"
+    SAVE_DIR = f"{vbgmm_input_dir}/vbgmm_inputs/"
+    PCA_FILE_BASE = f"{vbgmm_input_dir}/PCA_transformed_data_gt{min_length}.csv"
     PCA_COMPONENTS_FILE_BASE = (
-        f"{vbgmm_input_dir}PCA_components_data_gt{min_length}.csv"
+        f"{vbgmm_input_dir}/PCA_components_data_gt{min_length}.csv"
     )
+
+    MUSTLINK_FILE = f"{vbgmm_input_dir}/vbgmm_init_mustlink.csv"
+
     FLOAT_FORMAT = "%1.8e"
     seed = seed or randint(2, 22222)
     if verbose >= 1:
@@ -403,6 +447,8 @@ def run_vbgmm(
     np.savetxt(
         PCA_COMPONENTS_FILE_BASE, pca_components, fmt=FLOAT_FORMAT, delimiter=","
     )
+    export_clustering_init_state(D_ml, MUSTLINK_FILE)
+
     # - clustering on the selected features
     if verbose >= 1:
         print(
@@ -431,8 +477,14 @@ def run_vbgmm(
         .as_matrix()
     )
     # - rename VBGMM output files for traceability
-    os.rename(PCA_FILE_BASE, f"{PCA_FILE_BASE}_step{n}")
-    os.rename(PCA_COMPONENTS_FILE_BASE, f"{PCA_COMPONENTS_FILE_BASE}_step{n}")
+    os.makedirs(SAVE_DIR, exist_ok=True)
+    os.rename(
+        PCA_FILE_BASE, f"{SAVE_DIR}/iter{n}_PCA_components_data_gt{min_length}.csv"
+    )
+    os.rename(
+        PCA_COMPONENTS_FILE_BASE,
+        f"{SAVE_DIR}/iter{n}_PCA_components_data_gt{min_length}.csv",
+    )
     return vbgmm_clus
 
 
@@ -511,9 +563,8 @@ def extract_cluster_silhouette(
 ):
     """
     Keep a cluster if:
-     - silhouette Q1 is higher than global sithoulette median
+     - silhouette Q1 is higher than global silhoulette median
      - silhouette 10th percentile is higher than 0
-     - silhouette median is high than global silhouette median
     """
     assert hasattr(D, "index"), "D is not a pandas.DataFrame?"
     import numpy as np
