@@ -15,19 +15,23 @@ if os.environ["CONDA_DEFAULT_ENV"] != "fennec2-dev":
 
 if not fennec._utils.isinteractive():
     try:
-        DATASET = sys.argv[1]
+        _, DATASET, min_length, chunk_size, overlap = sys.argv
+        min_length, chunk_size, overlap = int(min_length), int(chunk_size), int(overlap)
     except:
-        print(f"usage: {sys.argv[0]} <S,M,L>")
+        print(f"usage: {sys.argv[0]} <S,M,L> <min_length> <chunk_size> <overlap>")
         sys.exit(1)
 else:
     DATASET = "S"
+    min_length = 1000
+    chunk_size = 10000
+    overlap = "auto"
 
 print(f"== Processing {DATASET} ==")
 
 # -- variable defintions
 fastafile = f"DATA/{DATASET}.Scaffolds.fasta"
-h5file = f"DATA/{DATASET}.completedata.h5"
-cov_file = f"DATA/{DATASET}.Scaffolds.l1000c10000o1428.csv"
+h5file = f"DATA/{DATASET}.completedata.l{min_length}c{chunk_size}o{overlap}.h5"
+cov_file = f"DATA/{DATASET}.Scaffolds.l{min_length}c{chunk_size}o{overlap}.csv"
 force_gc = True
 n_jobs = os.cpu_count()
 
@@ -35,7 +39,9 @@ n_jobs = os.cpu_count()
 if os.path.exists(h5file):
     seqdb = fennec.DNASequenceBank.read_hdf(h5file)
 else:
-    seqdb = fennec.DNASequenceBank(verbose=2)
+    seqdb = fennec.DNASequenceBank(
+        min_length=min_length, chunk_size=chunk_size, overlap=overlap, verbose=2
+    )
     seqdb.read_fasta(fastafile)
     print(seqdb)
     print(f"Saving to {h5file}")
