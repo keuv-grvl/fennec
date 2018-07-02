@@ -15,16 +15,24 @@ if os.environ["CONDA_DEFAULT_ENV"] != "fennec2-dev":
 
 if not fennec._utils.isinteractive():
     try:
-        _, DATASET, min_length, chunk_size, overlap = sys.argv
-        min_length, chunk_size, overlap = int(min_length), int(chunk_size), int(overlap)
+        _, DATASET, min_length, chunk_size, overlap, n_jobs = sys.argv
+        min_length, chunk_size, overlap, n_jobs = (
+            int(min_length),
+            int(chunk_size),
+            int(overlap),
+            int(n_jobs),
+        )
     except:
-        print(f"usage: {sys.argv[0]} <S,M,L> <min_length> <chunk_size> <overlap>")
+        print(
+            f"usage: {sys.argv[0]} <S,M,L> <min_length> <chunk_size> <overlap> <n_jobs>"
+        )
         sys.exit(1)
 else:
     DATASET = "S"
     min_length = 1000
     chunk_size = 10000
     overlap = "auto"
+    n_jobs = os.cpu_count()
 
 print(f"== Processing {DATASET} ==")
 
@@ -33,7 +41,6 @@ fastafile = f"DATA/{DATASET}.Scaffolds.fasta"
 h5file = f"DATA/{DATASET}.completedata.l{min_length}c{chunk_size}o{overlap}.h5"
 cov_file = f"DATA/{DATASET}.Scaffolds.l{min_length}c{chunk_size}o{overlap}.csv"
 force_gc = True
-n_jobs = os.cpu_count()
 
 # -- load sequences
 if os.path.exists(h5file):
