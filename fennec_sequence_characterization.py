@@ -4,6 +4,7 @@
 
 import gc
 import os
+import subprocess
 import sys
 
 import h5py
@@ -16,12 +17,11 @@ if os.environ["CONDA_DEFAULT_ENV"] != "fennec2-dev":
 if not fennec._utils.isinteractive():
     try:
         _, DATASET, min_length, chunk_size, overlap, n_jobs = sys.argv
-        min_length, chunk_size, overlap, n_jobs = (
-            int(min_length),
-            int(chunk_size),
-            int(overlap),
-            int(n_jobs),
-        )
+        min_length, chunk_size, n_jobs = (int(min_length), int(chunk_size), int(n_jobs))
+        try:
+            overlap = int(overlap)
+        except:  # `overlap` may be "auto"
+            assert overlap == 'auto', "`overlap` must be 0+ or 'auto'"
     except:
         print(
             f"usage: {sys.argv[0]} <S,M,L> <min_length> <chunk_size> <overlap> <n_jobs>"
@@ -70,17 +70,32 @@ models_definitions = {
     "contig2vec6": fennec.Contig2VecModel(k=6, verbose=3),
 }
 
-## Get coverage using GATTACA (Popic et al, 2017, doi: 10.1101/130997)
-# <FASTAFILE> = seqdb.to_fasta()
-# $ ../bin/gattaca index -i <FASTAFILE>
-# $ ../bin/gattaca lookup  \
-#   -c <FASTAFILE>  \
-#   -i <FASTAFILE>.k31.gatc  \
-#   -o output_file.csv -m
-if os.path.exists(cov_file):
-    models_definitions["cov_gattaca31"] = fennec.SequenceCoverageModel(
-        (cov_file,), verbose=3
+# -- Get coverage using GATTACA (Popic et al, 2017, doi: 10.1101/130997)
+if not os.path.exists(cov_file) and os.access("./bin/gattaca", os.X_OK):
+    fastafile = seqdb.to_fasta()
+    cov_file = fastafile.replace(".fasta", ".csv")
+
+    print(f"[INFO] Indexing {fastafile}")
+    _ = subprocess.check_output(["./bin/gattaca", "index", "-k", "31", "-i", fastafile])
+
+    print(f"[INFO] Running GATTACA on {fastafile}")
+    _ = subprocess.check_output(
+        [
+            "./bin/gattaca",
+            "lookup",
+            "-c",
+            fastafile,
+            "-i",
+            f"{fastafile}.k31.gatc",
+            "-o",
+            cov_file,
+            "-m",  # median coverage of each contig in each sample (recommended)
+        ]
     )
+
+models_definitions["cov_gattaca31"] = fennec.SequenceCoverageModel(
+    (cov_file,), verbose=3
+)
 
 # -- list models to apply
 with h5py.File(h5file, "r") as hf:
