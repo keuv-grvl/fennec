@@ -89,10 +89,12 @@ class DNASequenceBank(dict):
     def _chunks(self, s, n, o, min_len):
         """
         Returns `n`-sized chunks from DNA sequence `s` with given overlap `o`
-        between the chunks. If `n` is 0, do not split `s`.
+        between the chunks. If `n` is 0 or less, do not split `s`.
         """
         chunks = []
-        if len(s) <= n:
+        if n <= 0:
+            chunks.append(s)
+        elif len(s) <= n:
             chunks.append(s)
         else:
             i = 0
