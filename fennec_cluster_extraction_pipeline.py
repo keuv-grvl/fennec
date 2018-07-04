@@ -35,8 +35,6 @@ if os.environ["CONDA_DEFAULT_ENV"] != "fennec2-dev":
 
 
 # -- functions in development ---------------------------------------------------
-
-
 def _nonredondant_pairwise_index(x):
     for i in range(len(x)):
         for j in range(i, len(x)):
@@ -157,7 +155,7 @@ else:
 # -- user input
 vbgmm_input_dir = f"run.{DATASET}.output/"
 min_length = 1000  # minimum sequence length
-max_cluster = 300  # maximum number of cluster to extract
+max_cluster = 600  # maximum number of cluster to extract
 max_iter = 15  # maximum number of iteration
 
 # -- variables
@@ -367,21 +365,21 @@ print("[INFO] done in %d iterations" % (n + 1))
 pdf.close()
 
 # -- write clusters to CSV file
-output_cluter_file = f"{vbgmm_input_dir}/final_clustering.csv"
+output_cluster_file = f"{vbgmm_input_dir}/final_clustering.csv"
 cnt = 0
 
-with open(output_cluter_file, "w") as f:
-    print("%s,%s" % ("#SEQID", "CLUSTER"), file=f)
+with open(output_cluster_file, "w") as f:
+    print("%s\t%s" % ("#SEQID", "CLUSTER"), file=f)
     # - print extracted clusters from HISTORY
     for i, (_, _, _, _, vc, _, _, _) in HISTORY.items():
         for k, v in vc.items():
             for seqid in v:
-                print(f"{seqid},{cnt}", file=f)
+                print(f"{seqid}\t{cnt}", file=f)
             cnt += 1
     # - print unbinned or badbinned seqids
     for i, seqids in final_cluster.items():
         for seqid in seqids:
-            print(f"{seqid},{i}", file=f)
+            print(f"{seqid}\t{i}", file=f)
         cnt += 1
 
 
