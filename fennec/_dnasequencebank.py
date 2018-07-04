@@ -239,7 +239,7 @@ class DNASequenceBank(dict):
 
         tmpnameparts = self.fastafile.split(".")
         tmpnameparts.append(tmpnameparts[-1])
-        tmpnameparts[-2] = f"l{self.min_length}c{self.chunk_size}o{self.overlap_}"
+        tmpnameparts[-2] = f"l{self.min_length}c{self.chunk_size}o{self.overlap}"
         path = ".".join(tmpnameparts)
         if compress:
             path += ".gz"
