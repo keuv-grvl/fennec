@@ -142,18 +142,25 @@ def extract_unlink_clusters(curated_vbgmm_clus, D_ml, tol=0.9, verbose=True):
 # -------------------------------------------------------------------------------#
 
 if isinteractive():  # debug args if script is run in python shell
-    DATASET = "XS"
-    models_str = "kmers4,contig2vec4,contig2vec6,cov_gattaca31,kmers110011"  # kmers5,
+    dataset, init_type, mode, models_str = (
+        "S",
+        "kmeans",
+        "1iter",
+        "contig2vec4",
+        # "kmers4,contig2vec4,contig2vec6,cov_gattaca31,kmers110011"  # kmers5,
+    )
 else:
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 5:
         raise Exception(
-            'usage: python3 fennec_VBGMM_cluster_extraction.py <DATASET> "contig2vec4,ind15,kmers4,kmers110011,kmers1100110011,cov_gattaca31"'
+            "usage: python3 fennec_VBGMM_cluster_extracton.py <dataset> <init_type> <mode> <model1,model2,modelN>"
         )
     else:
-        _, DATASET, models_str = sys.argv
+        _, dataset, init_type, mode, models_str = sys.argv
 
 # -- user input
-vbgmm_input_dir = f"run.{DATASET}.output/"
+vbgmm_input_dir = f"run.{dataset}.output/"
+# vbgmm_input_dir = '/'.join([".", "FENNEC_ALL_RESULTS", dataset, init_type, mode, models_str, ""])
+
 min_length = 1000  # minimum sequence length
 max_cluster = 600  # maximum number of cluster to extract
 max_iter = 15  # maximum number of iteration
@@ -161,16 +168,16 @@ max_iter = 15  # maximum number of iteration
 # -- variables
 wanted_models = models_str.split(",")
 print(f"Models: {wanted_models}")
-h5file = f"DATA/{DATASET}.completedata.h5"
+h5file = f"DATA/{dataset}.completedata.l1000c10000oauto.h5"
 
+# -- check what type of input we have (probably h5 or fasta)
 if not os.path.isfile(h5file):
-    # TODO: extract feature from fasta file if h5file does not exist
     print("[ERROR] can not find file '%s'. Exiting." % h5file)
     sys.exit(1)
 else:
-    # Is the input a fasta file? In this case, extract features and set 'h5file'
     # See: `fennec_sequence_characterization.py`
     pass
+
 
 # -- load data
 raw_models, remaining_ids, D_ml = load_models(h5file, wanted_models)
@@ -185,14 +192,14 @@ kpca_params = {
 min_nb_seq = 50  # default value, will be updated later
 max_pca_dim = min(250, sum([d.shape[1] for d in raw_models.values()]) // 3)
 
-final_cluster = {}  # final cluster (id: [seqid])
-HISTORY = {}  # store data, pca, clusterings, filtered clustered, etc.
+problematic_cluster = {}  # final cluster (id: [seqid])
+HISTORY = {}  # store data, pca, clusterings, filtered clusterings, etc.
 n = 0  # current iteration
 
 # -- open report files
 os.makedirs(vbgmm_input_dir, exist_ok=True)  # create output dir
 pdf = PdfPages(
-    vbgmm_input_dir + "/vbgmm_iterative_extraction_" + DATASET + ".pdf",
+    vbgmm_input_dir + "/vbgmm_iterative_extraction_" + dataset + ".pdf",
     keep_empty=False,
 )
 
@@ -211,12 +218,12 @@ while True:
     # -- check if we have to continue
     if n >= max_iter:
         print("[END] It's already been %d iterations! Exiting." % n)
-        final_cluster["maxiter_" + str(n)] = remaining_ids
+        problematic_cluster["maxiter_" + str(n)] = remaining_ids
         break
 
     if max_cluster <= 1:
         print("[END] I will search for only %d clusters Exiting." % max_cluster)
-        final_cluster["lastcluster_" + str(n)] = remaining_ids
+        problematic_cluster["lastcluster_" + str(n)] = remaining_ids
         break
 
     # -- select features
@@ -235,7 +242,7 @@ while True:
             "[END] There is only %d sequences remaining (minimum %d per cluster). Exiting."
             % (len(D), min_nb_seq)
         )
-        final_cluster["notenough_" + str(n)] = remaining_ids
+        problematic_cluster["notenough_" + str(n)] = remaining_ids
         break
 
     if n_comp > max_pca_dim:
@@ -243,7 +250,7 @@ while True:
             "[END] PCA produced %d components for %.2f %% of inertia (maximum is %d). Exiting."
             % (n_comp, 100 * 0.9999, max_pca_dim)
         )
-        final_cluster["unbinned_" + str(n)] = remaining_ids
+        problematic_cluster["unbinned_" + str(n)] = remaining_ids
         break
 
     # TODO: Check for clusterability before clustering (see: https://github.com/alimuldal/diptest)
@@ -318,7 +325,7 @@ while True:
     )
 
     HISTORY[n] = (
-        # DATASET
+        # dataset
         D.copy(),
         # pca ratio
         pca_explained_variance_ratio.copy(),
@@ -336,14 +343,14 @@ while True:
 
     if len(validatedclus) == 0:
         print("[END] No good cluster have been extracted Exiting.")
-        # final_cluster['unbinned_' + str(n)] = remaining_ids
+        # problematic_cluster['unbinned_' + str(n)] = remaining_ids
         # - accept clustering as is
         for seqid in remaining_ids:
             try:
-                final_cluster["badbinned_" + str(CLUS.cluster[seqid])].append(seqid)
+                problematic_cluster["badbinned_" + str(CLUS.cluster[seqid])].append(seqid)
             except:
-                final_cluster["badbinned_" + str(CLUS.cluster[seqid])] = list()
-                final_cluster["badbinned_" + str(CLUS.cluster[seqid])].append(seqid)
+                problematic_cluster["badbinned_" + str(CLUS.cluster[seqid])] = list()
+                problematic_cluster["badbinned_" + str(CLUS.cluster[seqid])].append(seqid)
         break
 
     # - TODO: stop if more than 90~95% sequence untreated?
@@ -377,7 +384,7 @@ with open(output_cluster_file, "w") as f:
                 print(f"{seqid}\t{cnt}", file=f)
             cnt += 1
     # - print unbinned or badbinned seqids
-    for i, seqids in final_cluster.items():
+    for i, seqids in problematic_cluster.items():
         for seqid in seqids:
             print(f"{seqid}\t{i}", file=f)
         cnt += 1
