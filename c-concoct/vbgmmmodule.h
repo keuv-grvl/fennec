@@ -1,7 +1,8 @@
 #ifndef NMGS_H
 #define NMGS_H
 
-typedef struct s_Params {
+typedef struct s_Params
+{
 	/*seed */
 	unsigned long int lSeed;
 	/*min change VBL */
@@ -22,7 +23,8 @@ typedef struct s_Params {
 	int bConvergeOut;
 } t_Params;
 
-typedef struct s_Data {
+typedef struct s_Data
+{
 	int nN;
 
 	int nT;
@@ -38,7 +40,8 @@ typedef struct s_Data {
 	char **aszSampleNames;
 } t_Data;
 
-typedef struct s_VBParams {
+typedef struct s_VBParams
+{
 	/*scale for mean prior */
 	double dBeta0;
 
@@ -53,7 +56,8 @@ typedef struct s_VBParams {
 
 } t_VBParams;
 
-typedef struct s_Cluster {
+typedef struct s_Cluster
+{
 	/*output file for convergence if not null */
 	char *szCOutFile;
 	/*parameters for variational Bayes */
@@ -103,87 +107,88 @@ typedef struct s_Cluster {
 } t_Cluster;
 
 #define DELIM ",\n"
-#define MAX_LINE_LENGTH   1500000
-#define MAX_WORD_LENGTH   128
+#define MAX_LINE_LENGTH 1500000
+#define MAX_WORD_LENGTH 128
 
-#define TRUE  1
+#define TRUE 1
 #define FALSE 0
 
 #define NOT_SET -1
 
 /*Default parameters*/
-#define DEF_BETA0        1.0e-3
+#define DEF_BETA0 1.0e-3
 
-#define MIN_Z            1.0e-6
-#define MIN_PI           0.1	/*Unormalised */
-#define MIN_COVAR        0.001
+#define MIN_Z 1.0e-6
+#define MIN_PI 0.1 /*Unormalised */
+#define MIN_COVAR 0.001
 
 #ifndef N_RTHREADS
-#define N_RTHREADS       10
+#define N_RTHREADS 10
 #endif
 
-#define R_PRIME          1009
+#define R_PRIME 1009
 
-#define INPUT_FILE       "PCA_transformed_data_gt"
-#define PINPUT_FILE      "PCA_components_data_gt"
+#define INPUT_FILE "PCA_transformed_data_gt"
+#define PINPUT_FILE "PCA_components_data_gt"
+#define MLINPUT_FILE "mustlink_data_gt"
 
 int get_n_jobs(void);
 
 int driver(const char *szFileStub, int nKStart, int nLMin,
-	   unsigned long lSeed, int nMaxIter, double dEpsilon, int bCOut);
+		   unsigned long lSeed, int nMaxIter, double dEpsilon, int bCOut);
 
-void setParams(t_Params * ptParams, const char *szFileStub);
+void setParams(t_Params *ptParams, const char *szFileStub);
 
-void destroyParams(t_Params * ptParams);
+void destroyParams(t_Params *ptParams);
 
-void setVBParams(t_VBParams * ptVBParams, t_Data * ptData);
+void setVBParams(t_VBParams *ptVBParams, t_Data *ptData);
 
-void readInputData(const char *szFile, t_Data * ptData);
+void readInputData(const char *szFile, t_Data *ptData);
 
-void readPInputData(const char *szFile, t_Data * ptData);
+void readPInputData(const char *szFile, t_Data *ptData);
 
-void destroyData(t_Data * ptData);
+void destroyData(t_Data *ptData);
 
-void allocateCluster(t_Cluster * ptCluster, int nN, int nK,
-		     int nD, t_Data * ptData, long lSeed,
-		     int nMaxIter, double dEpsilon, char *szCOutFile);
+void allocateCluster(t_Cluster *ptCluster, int nN, int nK,
+					 int nD, t_Data *ptData, long lSeed,
+					 int nMaxIter, double dEpsilon, char *szCOutFile);
 
-void performMStep(t_Cluster * ptCluster, t_Data * ptData);
+void performMStep(t_Cluster *ptCluster, t_Data *ptData);
 
-void updateMeans(t_Cluster * ptCluster, t_Data * ptData);
+void updateMeans(t_Cluster *ptCluster, t_Data *ptData);
 
-void gmmTrainVB(t_Cluster * ptCluster, t_Data * ptData);
+void gmmTrainVB(t_Cluster *ptCluster, t_Data *ptData);
 
-void initRandom(gsl_rng * ptGSLRNG, t_Cluster * ptCluster, t_Data * ptData);
+void initRandom(gsl_rng *ptGSLRNG, t_Cluster *ptCluster, t_Data *ptData);
 
-void initKMeans(gsl_rng * ptGSLRNG, t_Cluster * ptCluster, t_Data * ptData);
+void initKMeans(gsl_rng *ptGSLRNG, t_Cluster *ptCluster, t_Data *ptData);
 
 double calcDist(double *adX, double *adMu, int nD);
 
-void calcZ(t_Cluster * ptCluster, t_Data * ptData);
+void calcZ(t_Cluster *ptCluster, t_Data *ptData);
 
-void writeClusters(char *szOutFile, t_Cluster * ptCluster, t_Data * ptData);
+void writeClusters(char *szOutFile, t_Cluster *ptCluster, t_Data *ptData);
 
-void destroyCluster(t_Cluster * ptCluster);
+void destroyCluster(t_Cluster *ptCluster);
 
 void *fitEM(void *pvCluster);
 
 void *runRThreads(void *pvpDCluster);
 
-void writeMeans(char *szOutFile, t_Cluster * ptCluster);
+void writeMeans(char *szOutFile, t_Cluster *ptCluster);
 
-void writeTMeans(char *szOutFile, t_Cluster * ptCluster, t_Data * ptData);
+void writeTMeans(char *szOutFile, t_Cluster *ptCluster, t_Data *ptData);
 
-void writeSquareMatrix(char *szFile, gsl_matrix * ptMatrix, int nD);
+void writeSquareMatrix(char *szFile, gsl_matrix *ptMatrix, int nD);
 
-void calcSampleVar(t_Data * ptData, double *adVar, double *adMu);
+void calcSampleVar(t_Data *ptData, double *adVar, double *adMu);
 
-double dLogWishartB(gsl_matrix * ptInvW, int nD, double dNu, int bInv);
+double dLogWishartB(gsl_matrix *ptInvW, int nD, double dNu, int bInv);
 
-double calcVBL(t_Cluster * ptCluster);
+double calcVBL(t_Cluster *ptCluster);
 
-void compressCluster(t_Cluster * ptCluster);
+void compressCluster(t_Cluster *ptCluster);
 
-void calcCovarMatrices(t_Cluster * ptCluster, t_Data * ptData);
+void calcCovarMatrices(t_Cluster *ptCluster, t_Data *ptData);
 
 #endif
