@@ -16,7 +16,7 @@ if os.environ["CONDA_DEFAULT_ENV"] != "fennec2-dev":
 
 if not fennec._utils.isinteractive():
     try:
-        _, dataset, min_length, chunk_size, overlap, n_jobs = sys.argv
+        _, fastafile, min_length, chunk_size, overlap, n_jobs = sys.argv
         min_length, chunk_size, n_jobs = (int(min_length), int(chunk_size), int(n_jobs))
         try:
             overlap = int(overlap)
@@ -24,22 +24,22 @@ if not fennec._utils.isinteractive():
             assert overlap == 'auto', "`overlap` must be 0+ or 'auto'"
     except:
         print(
-            f"usage: {sys.argv[0]} <S,M,L> <min_length> <chunk_size> <overlap> <n_jobs>"
+            f"usage: {sys.argv[0]} <file.fasta> <min_length> <chunk_size> <overlap> <n_jobs>"
         )
         sys.exit(1)
 else:
-    dataset = "S"
+    fastafile = "DATA/S.Scaffolds.fasta"
     min_length = 1000
     chunk_size = 10000
     overlap = "auto"
-    n_jobs = os.cpu_count()
+    n_jobs = 8
 
-print(f"== Processing {dataset} ==")
+
+print(f"== Processing '{fastafile}' ==")
 
 # -- variable definitions
-fastafile = f"DATA/{dataset}.Scaffolds.fasta"
-h5file = f"DATA/{dataset}.completedata.l{min_length}c{chunk_size}o{overlap}.h5"
-cov_file = f"DATA/{dataset}.Scaffolds.l{min_length}c{chunk_size}o{overlap}.csv"
+h5file = fastafile.replace(".fasta", ".h5")
+covfile = fastafile.replace(".fasta", ".cov")
 force_gc = True
 
 # -- load sequences
@@ -71,9 +71,9 @@ models_definitions = {
 }
 
 # -- Get coverage using GATTACA (Popic et al, 2017, doi: 10.1101/130997)
-if os.access("./bin/gattaca", os.X_OK) and not os.path.exists(cov_file):
+if os.access("./bin/gattaca", os.X_OK) and not os.path.exists(covfile):
     fastafile = seqdb.to_fasta()
-    cov_file = fastafile.replace(".fasta", ".csv")
+    covfile = fastafile.replace(".fasta", ".cov")
 
     print(f"[INFO] Indexing {fastafile}")
     _ = subprocess.check_output(["./bin/gattaca", "index", "-k", "31", "-i", fastafile])
@@ -88,14 +88,14 @@ if os.access("./bin/gattaca", os.X_OK) and not os.path.exists(cov_file):
             "-i",
             f"{fastafile}.k31.gatc",
             "-o",
-            cov_file,
+            covfile,
             "-m",  # median coverage of each contig in each sample (recommended)
         ]
     )
 
     print(f"[INFO] Adding SequenceCoverageModel to the model list")
     models_definitions["cov_gattaca31"] = fennec.SequenceCoverageModel(
-        (cov_file,), verbose=3
+        (covfile,), verbose=3
     )
 
 # -- list models to apply
