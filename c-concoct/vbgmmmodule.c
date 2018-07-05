@@ -54,7 +54,7 @@ static PyObject *vbgmm_get_n_jobs(PyObject *self, PyObject *args)
 static PyObject *vbgmm_testfit(PyObject *self, PyObject *args)
 {
 	(void)self;
-	const char *szFileStub = "/home/kgravouil/THESE/data/FENNEC/fennec/c-concoct/";
+	const char *szFileStub = "/home/kgravouil/THESE/data/FENNEC/fennec/c-concoct/tests";
 	int nKStart = 60, nLMin = 1000, nMaxIter = 30;
 	unsigned long lSeed = 666;
 	double dEpsilon = 1e-1;
