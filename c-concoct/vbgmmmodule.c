@@ -1974,7 +1974,6 @@ void *fitEM(void *pvCluster)
 
 	gsl_rng_set(ptGSLRNG, ptCluster->lSeed);
 
-	printf("== %s\n", ptCluster->szCOutFile);
 	if (ptCluster->szCOutFile == NULL)
 	{
 		printf("[DEBUG-%d] init KMeans...\n", ptCluster->nThread);
@@ -1985,7 +1984,6 @@ void *fitEM(void *pvCluster)
 		printf("[DEBUG-%d] init using must-link...\n", ptCluster->nThread);
 		initMustlink(ptGSLRNG, ptCluster, ptCluster->ptData);
 	}
-	return;
 
 	printf("[DEBUG-%d] train VBGMM...\n", ptCluster->nThread);
 	gmmTrainVB(ptCluster, ptCluster->ptData);
