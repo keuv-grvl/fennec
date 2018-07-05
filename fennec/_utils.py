@@ -343,15 +343,28 @@ def merge_models(models, index, kpca_params={"n_jobs": 1, "verbose": 0}):
     return D_pca, pca.components_, pca.explained_variance_ratio_, n_comp
 
 
-def export_clustering_init_state(D_ml, outfile):
+def _export_mustlink_relationships(D_ml, outfile):
     """
-    Export the clustering initialization state which strictly respects must-link
-    relationships. This will be used by module `vbgmm`.
+    Export the mustlink relationships as a text file. This will be used by module `vbgmm`.
+
+    `outfile` will contain IDs of sequences where each comma-separated line represents
+    a must-link cluster.
+
+    Parameters
+    ----------
+
+    D_ml: scipy.sparse.dok_matrix
+        Must-link relationship matrix
+
+    outfile: str
+        Filename where must-link data will be saved
+
     """
     import numpy as np
 
     cluster_nb = -1
     clusters = {}
+    # TODO: reindex `D_ml` according to sequences to cluster
     Is, Js = np.where(D_ml.toarray())
     seen = set()
 
@@ -366,13 +379,12 @@ def export_clustering_init_state(D_ml, outfile):
         seen.add(j)
 
     with open(outfile, "w") as f:
-        for k, vs in clusters.items():
-            for _ in vs:
-                print(k, file=f)
+        for vals in clusters.values():
+            print(",".join([str(x) for x in vals]), file=f)
 
 
 def run_vbgmm(
-    D_pca,
+    D,
     pca_components,
     D_ml,
     vbgmm_input_dir,
@@ -381,8 +393,8 @@ def run_vbgmm(
     n,
     seed=None,
     maxiter=500,
-    epsilon=1e-6,
-    write_converg=False,
+    epsilon=1e-4,
+    init_type="kmeans",
     verbose=0,
 ):
     """
@@ -391,11 +403,11 @@ def run_vbgmm(
     Parameters:
     -----------
 
-    D_pca: pandas.DataFrame
-        Results of PCA(0.75).fit_transform(D)
+    D: pandas.DataFrame
+        Results of `merge_models`
 
     pca_components: numpy.ndarray
-        Components of PCA. Can be obtained with `PCA(0.75).fit(D).components_`
+        Components of PCA. Can be obtained with `merge_models`
 
     D_ml: scipy.sparse.dok.dok_matrix
         Mustlink matrix provided by `load_models`
@@ -418,11 +430,11 @@ def run_vbgmm(
     maxiter: int (default: 500)
         Maximum number of iteration for VBGMM
 
-    epsilon: float (default: 1e-6)
+    epsilon: float (default: 1e-4)
         Minimum epsilon between 2 VBGMM iterations
 
-    write_converg: bool (default: False)
-        Write convergence info to files
+    init_type: str (default: "kmeans")
+        Initialisation type for the VBGMM clustering. Either "kmeans" or "mustlink".
 
     verbose: int (default: 0)
         Verbose level
@@ -430,24 +442,30 @@ def run_vbgmm(
     import datetime, os, time, vbgmm, numpy as np, pandas as pd
     from random import randint
 
+    assert init_type in [
+        "kmeans",
+        "mustlink",
+    ], f"`init_type` must be 'kmeans' or 'mustlink'. Got '{init_type}'"
+
+    FLOAT_FORMAT = "%1.8e"
     SAVE_DIR = f"{vbgmm_input_dir}/vbgmm_inputs/"
     PCA_FILE_BASE = f"{vbgmm_input_dir}/PCA_transformed_data_gt{min_length}.csv"
     PCA_COMPONENTS_FILE_BASE = (
         f"{vbgmm_input_dir}/PCA_components_data_gt{min_length}.csv"
     )
+    MUSTLINK_FILE = f"{vbgmm_input_dir}/mustlink_data_gt{min_length}.dat"
 
-    MUSTLINK_FILE = f"{vbgmm_input_dir}/vbgmm_init_mustlink.csv"
-
-    FLOAT_FORMAT = "%1.8e"
     seed = seed or randint(2, 22222)
+
+    # - save PCA and must-link data
     if verbose >= 1:
         print("[INFO] Writing data before clustering")
-    # - save PCA data
-    D_pca.to_csv(PCA_FILE_BASE, float_format=FLOAT_FORMAT, index_label="contig_id")
+
+    D.to_csv(PCA_FILE_BASE, float_format=FLOAT_FORMAT, index_label="contig_id")
     np.savetxt(
         PCA_COMPONENTS_FILE_BASE, pca_components, fmt=FLOAT_FORMAT, delimiter=","
     )
-    export_clustering_init_state(D_ml, MUSTLINK_FILE)
+    _export_mustlink_relationships(D_ml, MUSTLINK_FILE)
 
     # - clustering on the selected features
     if verbose >= 1:
@@ -455,36 +473,42 @@ def run_vbgmm(
             "[INFO] VBGMM clustering will be run %d times in parallel"
             % vbgmm.get_n_jobs()
         )
+
     start = time.time()
     vbgmm.fit(
-        vbgmm_input_dir,  # folder contained PCA data
+        vbgmm_input_dir,  # folder contained PCA and mustlink data
         max_cluster,  # max cluster
-        min_length,  # minimum length (for filenames only)
+        min_length,  # minimum length (used in filenames)
         seed,  # seed
-        maxiter,  # max iter
+        maxiter,  # maximum number of iteration
         epsilon,  # epsilon (=tolerance)
-        write_converg,  # write convergeance data?
+        "mustlink" == init_type,  # init type
     )
     end = time.time()
+
     if verbose >= 1:
         print("[INFO] Clustering done in: %s" % datetime.timedelta(seconds=end - start))
+
     # - load clustering results
     vbgmm_clus = (
         pd.read_csv(
             f"{vbgmm_input_dir}clustering_gt{min_length}.csv", header=None, index_col=0
         )
-        .reindex(index=D_pca.index)[1]
+        .reindex(index=D.index)[1]
         .as_matrix()
     )
+
     # - rename VBGMM output files for traceability
     os.makedirs(SAVE_DIR, exist_ok=True)
     os.rename(
-        PCA_FILE_BASE, f"{SAVE_DIR}/iter{n}_PCA_components_data_gt{min_length}.csv"
+        PCA_FILE_BASE, f"{SAVE_DIR}/iter{n}_PCA_transformed_data_gt{min_length}.csv"
     )
     os.rename(
         PCA_COMPONENTS_FILE_BASE,
         f"{SAVE_DIR}/iter{n}_PCA_components_data_gt{min_length}.csv",
     )
+    os.rename(MUSTLINK_FILE, f"{SAVE_DIR}/iter{n}_mustlink_data_gt{min_length}.dat")
+
     return vbgmm_clus
 
 
