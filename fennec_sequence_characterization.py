@@ -16,7 +16,7 @@ if os.environ["CONDA_DEFAULT_ENV"] != "fennec2-dev":
 
 if not fennec._utils.isinteractive():
     try:
-        _, DATASET, min_length, chunk_size, overlap, n_jobs = sys.argv
+        _, dataset, min_length, chunk_size, overlap, n_jobs = sys.argv
         min_length, chunk_size, n_jobs = (int(min_length), int(chunk_size), int(n_jobs))
         try:
             overlap = int(overlap)
@@ -28,18 +28,18 @@ if not fennec._utils.isinteractive():
         )
         sys.exit(1)
 else:
-    DATASET = "S"
+    dataset = "S"
     min_length = 1000
     chunk_size = 10000
     overlap = "auto"
     n_jobs = os.cpu_count()
 
-print(f"== Processing {DATASET} ==")
+print(f"== Processing {dataset} ==")
 
-# -- variable defintions
-fastafile = f"DATA/{DATASET}.Scaffolds.fasta"
-h5file = f"DATA/{DATASET}.completedata.l{min_length}c{chunk_size}o{overlap}.h5"
-cov_file = f"DATA/{DATASET}.Scaffolds.l{min_length}c{chunk_size}o{overlap}.csv"
+# -- variable definitions
+fastafile = f"DATA/{dataset}.Scaffolds.fasta"
+h5file = f"DATA/{dataset}.completedata.l{min_length}c{chunk_size}o{overlap}.h5"
+cov_file = f"DATA/{dataset}.Scaffolds.l{min_length}c{chunk_size}o{overlap}.csv"
 force_gc = True
 
 # -- load sequences
@@ -71,7 +71,7 @@ models_definitions = {
 }
 
 # -- Get coverage using GATTACA (Popic et al, 2017, doi: 10.1101/130997)
-if not os.path.exists(cov_file) and os.access("./bin/gattaca", os.X_OK):
+if os.access("./bin/gattaca", os.X_OK) and not os.path.exists(cov_file):
     fastafile = seqdb.to_fasta()
     cov_file = fastafile.replace(".fasta", ".csv")
 
@@ -93,9 +93,10 @@ if not os.path.exists(cov_file) and os.access("./bin/gattaca", os.X_OK):
         ]
     )
 
-models_definitions["cov_gattaca31"] = fennec.SequenceCoverageModel(
-    (cov_file,), verbose=3
-)
+    print(f"[INFO] Adding SequenceCoverageModel to the model list")
+    models_definitions["cov_gattaca31"] = fennec.SequenceCoverageModel(
+        (cov_file,), verbose=3
+    )
 
 # -- list models to apply
 with h5py.File(h5file, "r") as hf:
