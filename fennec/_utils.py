@@ -96,13 +96,13 @@ def draw_2D_plot(
     labels=None,
     n_iter=1500,
     metric="cosine",
+    n_jobs=1,
     cmap="tab20",
     figsize=(9, 8),
     outfile="tmp.tsne.data.csv",
     figfmt="png",
     verbose=0,
     force=False,
-    sklearn_tsne=False,
 ):
     """
     Visualization
@@ -111,7 +111,6 @@ def draw_2D_plot(
 
     import pandas as pd
     from matplotlib import pyplot as plt
-    from os import cpu_count
 
     tsne_args = {
         "n_components": 2,
@@ -126,12 +125,12 @@ def draw_2D_plot(
             raise Exception("Forcing!")
         D_tsne = pd.read_csv(outfile, index_col=0)
     except:
-        if sklearn_tsne:
-            from sklearn.manifold import TSNE
-        else:
+        try:
             from MulticoreTSNE import MulticoreTSNE as TSNE
 
-            tsne_args["n_jobs"] = cpu_count()
+            tsne_args["n_jobs"] = n_jobs
+        except:
+            from sklearn.manifold import TSNE
 
         from scipy.stats import zscore
         from sklearn.decomposition import PCA
