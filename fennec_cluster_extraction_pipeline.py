@@ -279,10 +279,9 @@ while True:
 
     # - reindex D_ml to fit the current `D.index`
     print("[INFO] Reindexing must-link matrix")
-    argid = [D.index.get_loc(x) for x in remaining_ids]
-    i, j = list(zip(*product(argid, argid)))  # may consume a lot of memory!
-    D_ml_sub = D_ml[i, j]
-    D_ml_sub.resize((len(argid), len(argid)))
+    argid = np.array([D.index.get_loc(x) for x in remaining_ids])
+    msh = np.meshgrid(argid, argid)
+    D_ml_sub = D_ml[msh[0].flatten(), msh[1].flatten()]
 
     # TODO: Check for "clusterability" before clustering (see: https://github.com/alimuldal/diptest)
 
