@@ -7,8 +7,12 @@
 # Python egg metadata, regenerated from source files by setuptools.
 /*.egg-info
 
-bin/
 build/
 *.so
 
+# Code editor config
 .vscode
+
+bin/
+MANUAL_RESULTS/
+DATA/
