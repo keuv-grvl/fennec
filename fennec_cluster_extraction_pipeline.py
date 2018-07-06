@@ -153,10 +153,10 @@ if isinteractive():  # debug args if script is run in python shell
 else:
     if len(sys.argv) != 5:
         raise Exception(
-            "usage: python3 fennec_VBGMM_cluster_extracton.py <file.h5> <label> <init_type> <mode> <model1,model2,modelN>"
+            "usage: python3 fennec_cluster_extraction_pipeline.py <file.h5> <label> <init_type> <mode> <model1,model2,modelN>"
         )
     else:
-        _, label, init_type, mode, models_str = sys.argv
+        _, h5file, label, init_type, mode, models_str = sys.argv
 
 assert init_type in ("kmeans", "mustlink"), "init_type is incorrect, got {}".format(
     init_type
