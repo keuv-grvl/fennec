@@ -151,7 +151,7 @@ if isinteractive():  # debug args if script is run in python shell
         "kmers4,contig2vec4,contig2vec6,cov_gattaca31,kmers110011",  # kmers5,
     )
 else:
-    if len(sys.argv) != 5:
+    if len(sys.argv) != 6:
         raise Exception(
             "usage: python3 fennec_cluster_extraction_pipeline.py <file.h5> <label> <init_type> <mode> <model1,model2,modelN>"
         )
