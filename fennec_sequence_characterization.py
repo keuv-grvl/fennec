@@ -21,7 +21,7 @@ if not fennec._utils.isinteractive():
         try:
             overlap = int(overlap)
         except:  # `overlap` may be "auto"
-            assert overlap == 'auto', "`overlap` must be 0+ or 'auto'"
+            assert overlap == "auto", "`overlap` must be 0+ or 'auto'"
     except:
         print(
             f"usage: {sys.argv[0]} <file.fasta> <min_length> <chunk_size> <overlap> <n_jobs>"
@@ -38,7 +38,7 @@ else:
 print(f"== Processing '{fastafile}' ==")
 
 # -- variable definitions
-h5file = fastafile.replace(".fasta", ".h5")
+h5file = fastafile.replace(".fasta", f"l{min_length}c{chunk_size}o{overlap}.h5")
 covfile = fastafile.replace(".fasta", ".cov")
 force_gc = True
 
