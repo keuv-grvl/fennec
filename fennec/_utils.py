@@ -304,6 +304,7 @@ def merge_models(models, index, kpca_params={"n_jobs": 1, "verbose": 0}):
     from sklearn.decomposition import PCA
 
     kmodels = {}
+
     # jobs = {}
     # #- apply KernelPCA(0.9) to each raw sequence model (asynchronously)
     # with ProcessPoolExecutor(max_workers=kpca_params['n_jobs']) as pe:
@@ -314,20 +315,25 @@ def merge_models(models, index, kpca_params={"n_jobs": 1, "verbose": 0}):
     # for i, j in jobs.items():
     #     kmodels[i] = j.result()
     # del jobs
+
     for i, d in models.items():
         if kpca_params["verbose"] >= 1:
             print(f"[INFO] Embedding {i}")
+
         d = d.reindex(index)
         kmodels[i] = myKernelPCA(d, **kpca_params)
+
     # - concatenate all kernelmodels
     D = pd.concat(list(kmodels.values()), ignore_index=True, axis=1)
     D.as_matrix().mean(), D.as_matrix().std()  # should be almost 0 and 1 resp.
     samplesize = min(max(len(D) // 4, 3333), len(D))
+
     if kpca_params["verbose"] >= 1:
         print(
             "[INFO] Selecting components using PCA using %d individuals (%.2f%%)."
             % (samplesize, (100 * samplesize / len(D)))
         )
+
     try:
         # - Pick principal components (99.99% of inertia) to discard "duplicate" attributes between models
         pca = PCA(0.9999)
@@ -364,7 +370,7 @@ def _export_mustlink_relationships(D_ml, outfile):
 
     cluster_nb = -1
     clusters = {}
-    # TODO: reindex `D_ml` according to sequences to cluster
+
     Is, Js = np.where(D_ml.toarray())
     seen = set()
 

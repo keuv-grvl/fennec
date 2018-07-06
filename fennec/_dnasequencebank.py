@@ -177,7 +177,7 @@ class DNASequenceBank(dict):
             print()
 
         if self.verbose >= 1:
-            print("[INFO] Formatting must-link matrix")
+            print("[INFO] Building must-link matrix")
 
         self.mustlink_matrix = dok_matrix((len(self), len(self)), dtype=np.bool)
         self._seqid2numid = {k: i for i, k in enumerate(self.keys())}
