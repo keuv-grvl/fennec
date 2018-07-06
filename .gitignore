@@ -15,4 +15,5 @@ build/
 
 bin/
 MANUAL_RESULTS/
+FENNEC_RESULTS/
 DATA/
