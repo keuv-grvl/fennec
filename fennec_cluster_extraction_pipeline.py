@@ -146,8 +146,8 @@ if isinteractive():  # debug args if script is run in python shell
         "S",
         "kmeans",
         "1iter",
-        "contig2vec4",
-        # "kmers4,contig2vec4,contig2vec6,cov_gattaca31,kmers110011"  # kmers5,
+        # "contig2vec4",
+        "kmers4,contig2vec4,contig2vec6,cov_gattaca31,kmers110011",  # kmers5,
     )
 else:
     if len(sys.argv) != 5:
@@ -233,6 +233,7 @@ while True:
     )
     print("[INFO] Merging models produced %d components" % n_comp)
 
+    # - exporting the PCA explained variance ratio
     with open(f"{vbgmm_input_dir}/pca_explvarratio.txt", "a") as outfile:
         print(n, pca_explained_variance_ratio, file=outfile)
 
@@ -253,8 +254,6 @@ while True:
         problematic_cluster["unbinned_" + str(n)] = remaining_ids
         break
 
-    # TODO: Check for clusterability before clustering (see: https://github.com/alimuldal/diptest)
-
     # -- which models are used?
     os.makedirs(f"{vbgmm_input_dir}/comporigins", exist_ok=True)
     for c in range(min(20, n_comp)):  # 20 first components
@@ -265,31 +264,42 @@ while True:
             outfile=f"{vbgmm_input_dir}/comporigins/pca_components_origin_comp{c}.csv",
         )
 
+    # - reindex D_ml to fit the current `D.index``
+    print("[INFO] Reindexing must-link matrix")
+    argid = [D.index.get_loc(x) for x in remaining_ids]
+    D_ml_sub = D_ml[:, argid][argid, :]
+
+    # TODO: Check for "clusterability" before clustering (see: https://github.com/alimuldal/diptest)
+
     # -- clustering
     vbgmm_clus = run_vbgmm(
         D,
         pca_components,
-        D_ml,
+        D_ml_sub,
         vbgmm_input_dir,
         max_cluster,
         min_length,
         n,
         # seed=666,
-        epsilon=1e-4,
+        init_type="mustlink",
+        epsilon=1e-2,
         verbose=2,
     )
+
     assert vbgmm_clus.shape[0] == len(
         remaining_ids
     ), "[ERROR] Not all sequences were clustered!"
 
     # -- clustering post processing
     # - drop tiny cluster (reassign sequences eventually)
-    curated_vbgmm_clus = reassign_tiny_cluster_mustlink(vbgmm_clus, D_ml, verbose=True)
+    curated_vbgmm_clus = reassign_tiny_cluster_mustlink(
+        vbgmm_clus, D_ml_sub, verbose=True
+    )
     np.unique(curated_vbgmm_clus).size
 
     # - TODO: merge clusters with enough must-link relationships
     # linked_vbgmm_clus = extract_unlink_clusters(
-    #     curated_vbgmm_clus, D_ml, verbose=True
+    #     curated_vbgmm_clus, D_ml_sub, verbose=True
     # )  ## NOTE: CURRENTLY DOES NOTHING
 
     # - extract cluster with high enough silhouette scores
@@ -347,10 +357,14 @@ while True:
         # - accept clustering as is
         for seqid in remaining_ids:
             try:
-                problematic_cluster["badbinned_" + str(CLUS.cluster[seqid])].append(seqid)
+                problematic_cluster["badbinned_" + str(CLUS.cluster[seqid])].append(
+                    seqid
+                )
             except:
                 problematic_cluster["badbinned_" + str(CLUS.cluster[seqid])] = list()
-                problematic_cluster["badbinned_" + str(CLUS.cluster[seqid])].append(seqid)
+                problematic_cluster["badbinned_" + str(CLUS.cluster[seqid])].append(
+                    seqid
+                )
         break
 
     # - TODO: stop if more than 90~95% sequence untreated?
