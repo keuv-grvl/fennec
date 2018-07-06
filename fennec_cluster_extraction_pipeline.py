@@ -4,11 +4,12 @@ import gc
 import os
 import sys
 
-# import matplotlib
-# matplotlib.use('Agg')  # https://stackoverflow.com/questions/37604289
+import matplotlib
+matplotlib.use('Agg')  # https://stackoverflow.com/questions/37604289
 
 import numpy as np
 import pandas as pd
+from itertools import product
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from scipy.spatial.distance import pdist
@@ -199,7 +200,7 @@ kpca_params = {
     "inertia": 0.85,
     "n_jobs": os.cpu_count(),
     "verbose": 3,
-    "t": 0.66,
+    "t": 0.33,
 }  # see: help(myKernelPCA)
 min_nb_seq = 50  # default value, will be updated later
 max_pca_dim = min(250, sum([d.shape[1] for d in raw_models.values()]) // 3)
@@ -279,7 +280,9 @@ while True:
     # - reindex D_ml to fit the current `D.index`
     print("[INFO] Reindexing must-link matrix")
     argid = [D.index.get_loc(x) for x in remaining_ids]
-    D_ml_sub = D_ml[:, argid][argid, :]
+    i, j = list(zip(*product(argid, argid)))  # may consume a lot of memory!
+    D_ml_sub = D_ml[i, j]
+    D_ml_sub.resize((len(argid), len(argid)))
 
     # TODO: Check for "clusterability" before clustering (see: https://github.com/alimuldal/diptest)
 
