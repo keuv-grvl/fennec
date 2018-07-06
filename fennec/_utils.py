@@ -226,7 +226,7 @@ def load_models(h5file, models):
 
 
 def myKernelPCA(
-    X, inertia, kernel="cosine", index=None, t=5, min_comp=3, n_jobs=1, verbose=False
+    X, inertia, kernel="cosine", index=None, t=0.2, min_comp=3, n_jobs=1, verbose=False
 ):
     """
     Perform KernelPCA on `X` then keep only `inertia`.
@@ -247,11 +247,12 @@ def myKernelPCA(
         If `None` all individuals from X are considered. Otherwise, only the
         subset from `index` is considered
 
-    min_comp: int (default: 5)
+    min_comp: int (default: 3)
         Minimum number of components to keep
 
-    t: int (default: 4)
-        KernelPCA will be fitted on 1/`t` of `X`
+    t: float (default: 0.2)
+        Proportion of data from `D` to use to fit KernelPCA
+        0.0 < t <= 1.0
 
     n_jobs: int (default: 1)
         Number of jobs
@@ -270,22 +271,32 @@ def myKernelPCA(
     assert (
         0.0 < inertia <= 1.0
     ), f"Must be: 0.0 < inertia <= 1.0 (got inertia={inertia})"
+
+    assert 0.0 < t <= 1.0, f"Must be: 0.0 < inertia <= 1.0 (got inertia={inertia})"
+
     from scipy.stats import zscore
     from sklearn.decomposition import KernelPCA
 
     if verbose:
-        print(f"[INFO] fitting KernelPCA using 1/{t}th of the data")
+        print(f"[INFO] fitting KernelPCA using {t * 100}% of the data")
+
     kpca = KernelPCA(kernel=kernel, n_jobs=n_jobs, copy_X=False)
-    kpca.fit(X.sample(len(X) // t))
+    kpca.fit(X.sample(int(len(X) * t)))
+
     if verbose:
         print(f"[INFO] filtering to keep {100 * inertia}% of inertia")
+
     explained_variance_ratio_ = (kpca.lambdas_ / kpca.lambdas_.sum()).cumsum()
     nb_tokeep = max(np.count_nonzero(explained_variance_ratio_ < inertia), min_comp)
+
     if verbose:
         print(f"[INFO] will keep {nb_tokeep} components")
+
     X_kpca = kpca.transform(X)[:, 0:nb_tokeep]
+
     if verbose:
         print(f"[INFO] scaling with zscore")
+
     X_kpca = zscore(X_kpca)
     return pd.DataFrame(X_kpca, index=X.index)
 

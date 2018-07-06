@@ -145,8 +145,8 @@ if isinteractive():  # debug args if script is run in python shell
     h5file, label, init_type, mode, models_str = (
         "DATA/S.completedata.l1000c10000oauto.h5",
         "S",
-        "kmeans",
-        "1iter",
+        "mustlink",
+        "fullpipeline",
         # "contig2vec4",
         "kmers4,contig2vec4,contig2vec6,cov_gattaca31,kmers110011",  # kmers5,
     )
@@ -158,9 +158,22 @@ else:
     else:
         _, label, init_type, mode, models_str = sys.argv
 
+assert init_type in ("kmeans", "mustlink"), "init_type is incorrect, got {}".format(
+    init_type
+)
+
+assert mode in (
+    "nopostprocessing",
+    "reassigntiny",
+    "fullpipeline",
+), "mode is incorrect, got {}".format(mode)
+
+
 # -- user input
 # vbgmm_input_dir = f"run.{label}.output/"
-vbgmm_input_dir = '/'.join([".", "FENNEC_RESULTS", label, init_type, mode, models_str, ""])
+vbgmm_input_dir = "/".join(
+    [".", "FENNEC_RESULTS", label, init_type, mode, models_str, ""]
+)
 
 min_length = 1000  # minimum sequence length
 max_cluster = 600  # maximum number of cluster to extract
@@ -170,15 +183,11 @@ max_iter = 15  # maximum number of iteration
 wanted_models = models_str.split(",")
 print(f"Models: {wanted_models}")
 
-h5file = f"DATA/{label}.completedata.l1000c10000oauto.h5"
-
 # -- check what type of input we have (probably h5 or fasta)
 if not os.path.isfile(h5file):
     print("[ERROR] can not find file '%s'. Exiting." % h5file)
-    sys.exit(1)
-else:
     # See: `fennec_sequence_characterization.py`
-    pass
+    sys.exit(1)
 
 
 # -- load data
@@ -190,6 +199,7 @@ kpca_params = {
     "inertia": 0.85,
     "n_jobs": os.cpu_count(),
     "verbose": 3,
+    "t": 0.66,
 }  # see: help(myKernelPCA)
 min_nb_seq = 50  # default value, will be updated later
 max_pca_dim = min(250, sum([d.shape[1] for d in raw_models.values()]) // 3)
@@ -199,10 +209,10 @@ HISTORY = {}  # store data, pca, clusterings, filtered clusterings, etc.
 n = 0  # current iteration
 
 # -- open report files
+print(f"[INFO] Results will be saved in '{vbgmm_input_dir}'")
 os.makedirs(vbgmm_input_dir, exist_ok=True)  # create output dir
 pdf = PdfPages(
-    vbgmm_input_dir + "/vbgmm_iterative_extraction_" + label + ".pdf",
-    keep_empty=False,
+    vbgmm_input_dir + "/vbgmm_iterative_extraction_" + label + ".pdf", keep_empty=False
 )
 
 # -- dev parameters
@@ -266,7 +276,7 @@ while True:
             outfile=f"{vbgmm_input_dir}/comporigins/pca_components_origin_comp{c}.csv",
         )
 
-    # - reindex D_ml to fit the current `D.index``
+    # - reindex D_ml to fit the current `D.index`
     print("[INFO] Reindexing must-link matrix")
     argid = [D.index.get_loc(x) for x in remaining_ids]
     D_ml_sub = D_ml[:, argid][argid, :]
@@ -283,7 +293,7 @@ while True:
         min_length,
         n,
         # seed=666,
-        init_type="mustlink",
+        init_type=init_type,
         epsilon=1e-2,
         verbose=2,
     )
@@ -292,12 +302,18 @@ while True:
         remaining_ids
     ), "[ERROR] Not all sequences were clustered!"
 
+    if mode == "nopostprocessing":
+        continue
+
     # -- clustering post processing
     # - drop tiny cluster (reassign sequences eventually)
     curated_vbgmm_clus = reassign_tiny_cluster_mustlink(
         vbgmm_clus, D_ml_sub, verbose=True
     )
     np.unique(curated_vbgmm_clus).size
+
+    if mode == "reassigntiny":
+        continue
 
     # - TODO: merge clusters with enough must-link relationships
     # linked_vbgmm_clus = extract_unlink_clusters(
@@ -374,8 +390,10 @@ while True:
     # - prepare for next iteration
     n += 1
     kpca_params["index"] = remaining_ids
+
     if force_gc:
         gc.collect()
+
     if devmode:
         break
 
