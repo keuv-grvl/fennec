@@ -142,7 +142,8 @@ def extract_unlink_clusters(curated_vbgmm_clus, D_ml, tol=0.9, verbose=True):
 # -------------------------------------------------------------------------------#
 
 if isinteractive():  # debug args if script is run in python shell
-    dataset, init_type, mode, models_str = (
+    h5file, label, init_type, mode, models_str = (
+        "DATA/S.completedata.l1000c10000oauto.h5",
         "S",
         "kmeans",
         "1iter",
@@ -152,14 +153,14 @@ if isinteractive():  # debug args if script is run in python shell
 else:
     if len(sys.argv) != 5:
         raise Exception(
-            "usage: python3 fennec_VBGMM_cluster_extracton.py <dataset> <init_type> <mode> <model1,model2,modelN>"
+            "usage: python3 fennec_VBGMM_cluster_extracton.py <file.h5> <label> <init_type> <mode> <model1,model2,modelN>"
         )
     else:
-        _, dataset, init_type, mode, models_str = sys.argv
+        _, label, init_type, mode, models_str = sys.argv
 
 # -- user input
-vbgmm_input_dir = f"run.{dataset}.output/"
-# vbgmm_input_dir = '/'.join([".", "FENNEC_ALL_RESULTS", dataset, init_type, mode, models_str, ""])
+# vbgmm_input_dir = f"run.{label}.output/"
+vbgmm_input_dir = '/'.join([".", "FENNEC_RESULTS", label, init_type, mode, models_str, ""])
 
 min_length = 1000  # minimum sequence length
 max_cluster = 600  # maximum number of cluster to extract
@@ -168,7 +169,8 @@ max_iter = 15  # maximum number of iteration
 # -- variables
 wanted_models = models_str.split(",")
 print(f"Models: {wanted_models}")
-h5file = f"DATA/{dataset}.completedata.l1000c10000oauto.h5"
+
+h5file = f"DATA/{label}.completedata.l1000c10000oauto.h5"
 
 # -- check what type of input we have (probably h5 or fasta)
 if not os.path.isfile(h5file):
@@ -199,7 +201,7 @@ n = 0  # current iteration
 # -- open report files
 os.makedirs(vbgmm_input_dir, exist_ok=True)  # create output dir
 pdf = PdfPages(
-    vbgmm_input_dir + "/vbgmm_iterative_extraction_" + dataset + ".pdf",
+    vbgmm_input_dir + "/vbgmm_iterative_extraction_" + label + ".pdf",
     keep_empty=False,
 )
 
