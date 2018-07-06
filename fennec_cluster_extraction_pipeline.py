@@ -5,7 +5,8 @@ import os
 import sys
 
 import matplotlib
-matplotlib.use('Agg')  # https://stackoverflow.com/questions/37604289
+
+matplotlib.use("Agg")  # https://stackoverflow.com/questions/37604289
 
 import numpy as np
 import pandas as pd
@@ -281,7 +282,7 @@ while True:
     print("[INFO] Reindexing must-link matrix")
     argid = np.array([D.index.get_loc(x) for x in remaining_ids])
     msh = np.meshgrid(argid, argid)
-    D_ml_sub = D_ml[msh[0].flatten(), msh[1].flatten()]
+    D_ml_sub = D_ml[msh[0], msh[1]]
 
     # TODO: Check for "clusterability" before clustering (see: https://github.com/alimuldal/diptest)
 
@@ -337,6 +338,7 @@ while True:
             n_iter=1200,
             force=True,
             verbose=3,
+            n_jobs=os.cpu_count(),
         )
         plt.savefig(f"{vbgmm_input_dir}/iter{n}.tsne.rawclus.png")
         draw_2D_plot(
@@ -347,6 +349,7 @@ while True:
             n_iter=1200,
             force=False,
             verbose=3,
+            n_jobs=os.cpu_count(),
         )
         plt.savefig(f"{vbgmm_input_dir}/iter{n}.tsne.curatedclus.png")
 
