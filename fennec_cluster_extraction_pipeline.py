@@ -228,6 +228,7 @@ draw_plot = True  # draw 2D plot of each clustering (take some times)
 
 while True:
     print(f"[INFO] --- ITERATION {n} {'-'*60}")
+    print(f"[INFO] Number of sequence to process: {len(remaining_ids)}")
 
     # -- check if we have to continue
     if n >= max_iter:
