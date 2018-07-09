@@ -13,6 +13,7 @@ import pandas as pd
 from itertools import product
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from pathlib import Path
 from scipy.spatial.distance import pdist
 from sklearn import preprocessing
 
@@ -179,7 +180,7 @@ vbgmm_input_dir = "/".join(
 
 min_length = 1000  # minimum sequence length
 max_cluster = 600  # maximum number of cluster to extract
-max_iter = 15  # maximum number of iteration
+max_iter = 25  # maximum number of iteration
 
 # -- variables
 wanted_models = models_str.split(",")
@@ -431,6 +432,8 @@ with open(output_cluster_file, "w") as f:
 
 
 print("[INFO] Bye.")
+Path(f"{vbgmm_input_dir}/DONE").touch()
+
 sys.exit(0)
 
 # ----------------------------- #
