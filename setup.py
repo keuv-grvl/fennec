@@ -38,9 +38,7 @@ module1 = Extension(
     include_dirs=["c-concoct"],
     sources=["c-concoct/vbgmmmodule.c"],
     define_macros=[
-        # ('N_RTHREADS', "32")
-        ("N_RTHREADS", str(os.cpu_count()))  # use all CPU
-        # ('N_RTHREADS', str(min(32, os.cpu_count()))) # use maximum of 32 CPU
+        ("N_RTHREADS", os.getenv('N_RTHREADS') or str(min(64, os.cpu_count())))
     ],
 )
 

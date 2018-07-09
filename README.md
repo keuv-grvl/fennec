@@ -1,6 +1,5 @@
 # fennec
 
-
 ## Installation
 
 ```bash
@@ -8,6 +7,12 @@ git clone --recurse-submodules https://github.com/keuv-grvl/fennec.git
 cd fennec/
 pip install numpy  # scikit-bio requires numpy to be already installed
 pip install .
+```
+
+By default, VBGMM will use 64 CPU or your number of CPU. You may override this with:
+
+```bash
+N_RTHREADS=24 pip install .
 ```
 
 ## Usage
