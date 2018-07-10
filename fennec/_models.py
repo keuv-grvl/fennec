@@ -864,7 +864,7 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
             Either a pretrained dna2vec model label (see `self.available_models`)
             or an model file path.
 
-        verbose:  int (default: 0)
+        verbose: int (default: 0)
             Verbosity level.
 
         n_jobs: int (default: 1)
@@ -936,7 +936,7 @@ class Contig2VecModel(BaseEstimator, TransformerMixin):
         else:
             # not supported yet + it's super long to run!
             # but we could train on `X` only
-            raise NotImplementedError("You must provide a `modilefile`.")
+            raise NotImplementedError("You must provide a `modelfile`.")
         return self
 
     def _sentences_to_vector(self, sentences):

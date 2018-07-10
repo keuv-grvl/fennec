@@ -38,7 +38,7 @@ else:
 print(f"== Processing '{fastafile}' ==")
 
 # -- variable definitions
-h5file = fastafile.replace(".fasta", f"l{min_length}c{chunk_size}o{overlap}.h5")
+h5file = fastafile.replace(".fasta", f".l{min_length}c{chunk_size}o{overlap}.h5")
 covfile = fastafile.replace(".fasta", ".cov")
 force_gc = True
 
