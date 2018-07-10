@@ -66,7 +66,7 @@ def _mysquareform(x, l):
     return m
 
 
-def get_nb_mustlink_per_cluster(curated_vbgmm_clus, D_ml, n_jobs=1, verbose=False):
+def get_nb_mustlink_per_cluster(clus, D_ml, n_jobs=1, verbose=False):
     """
     Return number of mustlink for each pair of cluster
     """
@@ -74,8 +74,8 @@ def get_nb_mustlink_per_cluster(curated_vbgmm_clus, D_ml, n_jobs=1, verbose=Fals
     # return pd.DataFrame(data=_mysquareform([
     #         D_ml[
     #             np.ix_(
-    #                 np.where(curated_vbgmm_clus == ci)[0],
-    #                 np.where(curated_vbgmm_clus == cj)[0]
+    #                 np.where(clus == ci)[0],
+    #                 np.where(clus == cj)[0]
     #             )
     #         ].count_nonzero()
     #         for ci, cj in _nonredondant_pairwise_index(categ)],
@@ -86,7 +86,7 @@ def get_nb_mustlink_per_cluster(curated_vbgmm_clus, D_ml, n_jobs=1, verbose=Fals
     from time import sleep
     from concurrent.futures import ProcessPoolExecutor
 
-    categ = np.unique(curated_vbgmm_clus)
+    categ = np.unique(clus)
     jobs = []
     with ProcessPoolExecutor(max_workers=n_jobs) as pe:
         for ci, cj in _nonredondant_pairwise_index(categ):
@@ -119,14 +119,15 @@ def extract_unlink_clusters(curated_vbgmm_clus, D_ml, tol=0.9, verbose=True):
     If 2 clusters from `curated_vbgmm_clus` have at least 90% of must-link link from
     `D_ml`, they are dropped from the cluster list and set as `remaining_ids`.
     """
-    import numpy as np
+    import numpy as np, os
 
+    os.makedirs(f"{vbgmm_input_dir}/mustlink_info/", exist_ok=True)
     cnt_ml = get_nb_mustlink_per_cluster(
         curated_vbgmm_clus, D_ml, verbose=verbose, n_jobs=8
     )
     perc_ml = np.diag(cnt_ml) / cnt_ml.sum()
     pd.concat([cnt_ml, perc_ml])
-    cnt_ml.to_csv(f"{vbgmm_input_dir}/iter{n}_mustlink.csv")
+    cnt_ml.to_csv(f"{vbgmm_input_dir}/mustlink_info/iter{n}_nb_mustlink.csv")
     clustokeep = cnt_ml.index[perc_ml >= tol]
     remaining_ids = cnt_ml.index[perc_ml < tol]
 
@@ -200,7 +201,7 @@ print([(i, d.shape[1]) for i, d in raw_models.items()])
 # -- set some parameters
 kpca_params = {
     "inertia": 0.85,
-    "n_jobs": os.cpu_count(),
+    "n_jobs": 8,
     "verbose": 3,
     "t": 0.33,
 }  # see: help(myKernelPCA)
@@ -213,7 +214,10 @@ n = 0  # current iteration
 
 # -- open report files
 print(f"[INFO] Results will be saved in '{vbgmm_input_dir}'")
-os.makedirs(vbgmm_input_dir, exist_ok=True)  # create output dir
+os.makedirs(vbgmm_input_dir, exist_ok=True)
+os.makedirs(f"{vbgmm_input_dir}/comporigins/", exist_ok=True)
+os.makedirs(f"{vbgmm_input_dir}/mustlink_info/", exist_ok=True)
+
 pdf = PdfPages(
     vbgmm_input_dir + "/vbgmm_iterative_extraction_" + label + ".pdf", keep_empty=False
 )
@@ -271,7 +275,6 @@ while True:
         break
 
     # -- which models are used?
-    os.makedirs(f"{vbgmm_input_dir}/comporigins", exist_ok=True)
     for c in range(min(20, n_comp)):  # 20 first components
         pcacomp_to_model(
             D[c],
@@ -321,9 +324,17 @@ while True:
         continue
 
     # - TODO: merge clusters with enough must-link relationships
-    # linked_vbgmm_clus = extract_unlink_clusters(
+    # _, _, _ = extract_unlink_clusters(
     #     curated_vbgmm_clus, D_ml_sub, verbose=True
-    # )  ## NOTE: CURRENTLY DOES NOTHING
+    # )
+
+    # count must link relationships between clusters
+    cnt_ml = get_nb_mustlink_per_cluster(
+        curated_vbgmm_clus, D_ml, verbose=True, n_jobs=8
+    )
+    perc_ml = np.diag(cnt_ml) / cnt_ml.sum()
+    pd.concat([cnt_ml, perc_ml])
+    cnt_ml.to_csv(f"{vbgmm_input_dir}/mustlink_info/iter{n}_nb_mustlink.csv")
 
     # - extract cluster with high enough silhouette scores
     validatedclus, remaining_ids, max_cluster = extract_cluster_silhouette(
@@ -340,7 +351,7 @@ while True:
             n_iter=1200,
             force=True,
             verbose=3,
-            n_jobs=os.cpu_count(),
+            n_jobs=8,  # os.cpu_count(),
         )
         plt.savefig(f"{vbgmm_input_dir}/iter{n}.tsne.rawclus.png")
         draw_2D_plot(
@@ -351,7 +362,7 @@ while True:
             n_iter=1200,
             force=False,
             verbose=3,
-            n_jobs=os.cpu_count(),
+            n_jobs=8,  # os.cpu_count(),
         )
         plt.savefig(f"{vbgmm_input_dir}/iter{n}.tsne.curatedclus.png")
 

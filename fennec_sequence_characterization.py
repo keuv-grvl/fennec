@@ -114,8 +114,8 @@ print(
 for model in models_to_apply:
     print(f" ø {model}")
     X = models_definitions[model].fit_transform(seqdb)
-    if model.startswith("kmers"):  # if kmer count
-        X = X.astype(int)
+    # if model.startswith("kmers"):  # if kmer count
+    #     X = X.astype(int)
     print(f"   shape: {X.shape}")
     print(f"   saving to: {h5file}")
     X.to_hdf(h5file, f"rawmodel/{model}")
