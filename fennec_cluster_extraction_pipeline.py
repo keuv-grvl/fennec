@@ -155,12 +155,12 @@ if isinteractive():  # debug args if script is run in python shell
         "kmers4,contig2vec4,contig2vec6,cov_gattaca31,kmers110011",  # kmers5,
     )
 else:
-    if len(sys.argv) != 6:
+    if len(sys.argv) != 7:
         raise Exception(
-            "usage: python3 fennec_cluster_extraction_pipeline.py <file.h5> <label> <init_type> <mode> <model1,model2,modelN>"
+            "usage: python3 fennec_cluster_extraction_pipeline.py <file.h5> <label> <overlap> <init_type> <mode> <model1,model2,modelN>"
         )
     else:
-        _, h5file, label, init_type, mode, models_str = sys.argv
+        _, h5file, label, overlap, init_type, mode, models_str = sys.argv
 
 assert init_type in ("kmeans", "mustlink"), "init_type is incorrect, got {}".format(
     init_type
@@ -176,7 +176,7 @@ assert mode in (
 # -- user input
 # vbgmm_input_dir = f"run.{label}.output/"
 vbgmm_input_dir = "/".join(
-    [".", "FENNEC_RESULTS", label, init_type, mode, models_str, ""]
+    [".", "FENNEC_RESULTS", label, overlap, init_type, mode, models_str, ""]
 )
 
 min_length = 1000  # minimum sequence length

@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 
 # ensure parallel is installed
-which parallel || exit 1
+which parallel || exit 1 ;
 
 # enter a screen session
-screen -dmS fen.bench
-screen -r fen.bench
+screen -dmS "fen.bench"
+screen -r "fen.bench"
 
 # force environment reactivation
-source activate fennec2-dev
+source deactivate "fennec2-dev"
+source activate "fennec2-dev"
 
 # reinstall fennec
 rm -r build/ fennec.egg-info/ vbgmm.cpython-36m-x86_64-linux-gnu.so
@@ -24,7 +25,7 @@ L0="S M L"  # datasets
 L1="auto 0"  # overlap
 L2="kmeans mustlink"  # clustering initialization
 L3="nopostprocessing reassigntiny fullpipeline"  # pipeline postprocessing
-L4="kmers4 contig2vec4 kmers110011 ind15 kmers4,contig2vec4,contig2vec6,cov_gattaca31,kmers110011,ind15"  # models1
+L4="kmers4 contig2vec4 kmers110011 ind15 kmers4,contig2vec4,contig2vec6,cov_gattaca31,kmers110011,ind15"  # models
 
 # generate list of commands to run and folders
 for A in $(echo $L0) ; do
@@ -36,7 +37,7 @@ for A in $(echo $L0) ; do
                 for E in $(echo $L4) ; do
                     test -e "$ROOT/$A/$B/$C/$D/$E/DONE" && continue  # skip if 'DONE' file already exists
                     mkdir -p "$ROOT/$A/$B/$C/$D/$E/"
-                    echo $TIME -v -o \"$ROOT/$A/$B/$C/$D/$E/time.log\" python3 fennec_VBGMM_cluster_extraction.py \"$F\" \"$A\" \"$B\" \"$C\" \"$D\" \"$E\" \> \"$ROOT/$A/$B/$C/$D/$E/exec.log\"
+                    echo $TIME -v -o \"$ROOT/$A/$B/$C/$D/$E/time.log\" python3 fennec_cluster_extraction_pipeline.py \"$F\" \"$A\" \"$B\" \"$C\" \"$D\" \"$E\" \> \"$ROOT/$A/$B/$C/$D/$E/exec.log\"
                 done
             done
         done
@@ -44,5 +45,6 @@ for A in $(echo $L0) ; do
 done > benchmark.cmds
 
 # run command in parallel
-parallel -j16 < benchmark.cmds
+parallel -j4 < benchmark.cmds
 echo "pfiou... done"
+
