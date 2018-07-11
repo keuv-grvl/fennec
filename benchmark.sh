@@ -5,6 +5,9 @@
 screen -ls "fen.bench" || screen -dmS "fen.bench"
 screen -r "fen.bench"
 
+# increase mac proc limit to the maximum
+ulimit -Su $(ulimit -Hu)
+
 # force environment reactivation
 source deactivate "fennec2-dev"
 source activate "fennec2-dev"
@@ -52,5 +55,5 @@ for A in $(echo $L0) ; do
 done > benchmark.cmds
 
 # run command in parallel
-parallel -j8 < benchmark.cmds
+parallel -j16 < benchmark.cmds
 echo "pfiou... done"
