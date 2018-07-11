@@ -167,12 +167,9 @@ assert init_type in ("kmeans", "mustlink"), "init_type is incorrect, got {}".for
     init_type
 )
 
-assert mode in (
-    "nopostprocessing",
-    "reassigntiny",
-    "fullpipeline",
-), "mode is incorrect, got {}".format(mode)
-
+assert mode in ("nopostprocessing", "reassigntiny"), "mode is incorrect, got {}".format(
+    mode
+)
 
 # -- user input
 # vbgmm_input_dir = f"run.{label}.output/"
@@ -311,24 +308,16 @@ while True:
         remaining_ids
     ), "[ERROR] Not all sequences were clustered!"
 
-    if mode == "nopostprocessing":
-        n += 1
-        kpca_params["index"] = remaining_ids
-        gc.collect()
-        continue
-
     # -- clustering post processing
     # - drop tiny cluster (reassign sequences eventually)
-    curated_vbgmm_clus = reassign_tiny_cluster_mustlink(
-        vbgmm_clus, D_ml_sub, verbose=True
-    )
-    np.unique(curated_vbgmm_clus).size
-
     if mode == "reassigntiny":
-        n += 1
-        kpca_params["index"] = remaining_ids
-        gc.collect()
-        continue
+        curated_vbgmm_clus = reassign_tiny_cluster_mustlink(
+            vbgmm_clus, D_ml_sub, verbose=True
+        )
+    elif mode == "nopostprocessing":
+        curated_vbgmm_clus = vbgmm_clus
+
+    np.unique(curated_vbgmm_clus).size
 
     # - TODO: merge clusters with enough must-link relationships
     # _, _, _ = extract_unlink_clusters(
@@ -396,7 +385,6 @@ while True:
 
     if len(validatedclus) == 0:
         print("[END] No good cluster have been extracted Exiting.")
-        # problematic_cluster['unbinned_' + str(n)] = remaining_ids
         # - accept clustering as is
         for seqid in remaining_ids:
             try:
@@ -415,7 +403,6 @@ while True:
     # - prepare for next iteration
     n += 1
     kpca_params["index"] = remaining_ids
-    gc.collect()
 
     if force_gc:
         gc.collect()
