@@ -362,6 +362,7 @@ void readInputData(const char *szFile, t_Data *ptData)
 				}
 			}
 		}
+		fclose(ifp);
 	}
 	else
 	{
@@ -449,6 +450,7 @@ void readPInputData(const char *szFile, t_Data *ptData)
 				gsl_matrix_set(ptData->ptTMatrix, j, i, dTemp);
 			}
 		}
+		fclose(ifp);
 	}
 	else
 	{
