@@ -508,7 +508,7 @@ def run_vbgmm(
     # - load clustering results
     vbgmm_clus = (
         pd.read_csv(
-            f"{vbgmm_input_dir}clustering_gt{min_length}.csv", header=None, index_col=0
+            f"{vbgmm_input_dir}/clustering_gt{min_length}.csv", header=None, index_col=0
         )
         .reindex(index=D.index)[1]
         .as_matrix()

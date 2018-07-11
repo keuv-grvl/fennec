@@ -146,9 +146,10 @@ def extract_unlink_clusters(curated_vbgmm_clus, D_ml, tol=0.9, verbose=True):
 # -------------------------------------------------------------------------------#
 
 if isinteractive():  # debug args if script is run in python shell
-    h5file, label, init_type, mode, models_str = (
+    h5file, label, overlap, init_type, mode, models_str = (
         "DATA/S.completedata.l1000c10000oauto.h5",
         "S",
+        "auto",
         "mustlink",
         "fullpipeline",
         # "contig2vec4",
@@ -176,7 +177,7 @@ assert mode in (
 # -- user input
 # vbgmm_input_dir = f"run.{label}.output/"
 vbgmm_input_dir = "/".join(
-    [".", "FENNEC_RESULTS", label, overlap, init_type, mode, models_str, ""]
+    ["FENNEC_RESULTS", label, overlap, init_type, mode, models_str, ""]
 )
 
 min_length = 1000  # minimum sequence length
@@ -311,6 +312,9 @@ while True:
     ), "[ERROR] Not all sequences were clustered!"
 
     if mode == "nopostprocessing":
+        n += 1
+        kpca_params["index"] = remaining_ids
+        gc.collect()
         continue
 
     # -- clustering post processing
@@ -321,6 +325,9 @@ while True:
     np.unique(curated_vbgmm_clus).size
 
     if mode == "reassigntiny":
+        n += 1
+        kpca_params["index"] = remaining_ids
+        gc.collect()
         continue
 
     # - TODO: merge clusters with enough must-link relationships
@@ -408,6 +415,7 @@ while True:
     # - prepare for next iteration
     n += 1
     kpca_params["index"] = remaining_ids
+    gc.collect()
 
     if force_gc:
         gc.collect()

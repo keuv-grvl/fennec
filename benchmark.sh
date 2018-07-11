@@ -1,19 +1,25 @@
 #!/usr/bin/env bash
 
-# ensure parallel is installed
-which parallel || exit 1 ;
 
 # enter a screen session
-screen -dmS "fen.bench"
+screen -ls "fen.bench" || screen -dmS "fen.bench"
 screen -r "fen.bench"
 
 # force environment reactivation
 source deactivate "fennec2-dev"
 source activate "fennec2-dev"
 
+# ensure parallel is installed
+which parallel || exit 1 ;
+
 # reinstall fennec
 rm -r build/ fennec.egg-info/ vbgmm.cpython-36m-x86_64-linux-gnu.so
 N_RTHREADS=8 pip install -e .  # can run 20 instances simultaneously on totoro
+
+# check fennec version
+python --version
+python -c "import fennec; print(fennec.__version__)"
+python -c "import vbgmm; print(vbgmm.get_n_jobs())"
 
 # get path to GNU time
 TIME=$(for A in $(whereis time); do test -x $A && echo $A; done|tail -n1)
@@ -35,9 +41,10 @@ for A in $(echo $L0) ; do
         for C in $(echo $L2) ; do
             for D in $(echo $L3) ; do
                 for E in $(echo $L4) ; do
-                    test -e "$ROOT/$A/$B/$C/$D/$E/DONE" && continue  # skip if 'DONE' file already exists
-                    mkdir -p "$ROOT/$A/$B/$C/$D/$E/"
-                    echo $TIME -v -o \"$ROOT/$A/$B/$C/$D/$E/time.log\" python3 fennec_cluster_extraction_pipeline.py \"$F\" \"$A\" \"$B\" \"$C\" \"$D\" \"$E\" \> \"$ROOT/$A/$B/$C/$D/$E/exec.log\"
+                    DIR=$ROOT/$A/$B/$C/$D/$E/
+                    mkdir -p "$DIR/"
+                    test -e "$DIR/DONE" && continue  # skip if 'DONE' file already exists
+                    echo $TIME -v -o \"$DIR/time.log\" python3 fennec_cluster_extraction_pipeline.py \"$F\" \"$A\" \"$B\" \"$C\" \"$D\" \"$E\" 2\> \"$DIR/exec.err\" \> \"$DIR/exec.log\"
                 done
             done
         done
@@ -45,6 +52,5 @@ for A in $(echo $L0) ; do
 done > benchmark.cmds
 
 # run command in parallel
-parallel -j4 < benchmark.cmds
+parallel -j8 < benchmark.cmds
 echo "pfiou... done"
-
