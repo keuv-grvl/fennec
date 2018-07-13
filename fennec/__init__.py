@@ -24,3 +24,4 @@ __all__ = [
     "Contig2VecModel",
     "SequenceCoverageModel",
 ]
+__citation__ = """@misc{}"""
