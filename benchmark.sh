@@ -5,8 +5,9 @@
 screen -ls "fen.bench" || screen -dmS "fen.bench"
 screen -r "fen.bench"
 
-# increase mac proc limit to the maximum
+# increase max proc limit to the maximum
 ulimit -Su $(ulimit -Hu)
+prlimit
 
 # force environment reactivation
 source deactivate "fennec2-dev"
@@ -33,7 +34,7 @@ ROOT="FENNEC_RESULTS"  # main output folder
 L0="S M L"  # datasets
 L1="auto 0"  # overlap
 L2="kmeans mustlink"  # clustering initialization
-L3="nopostprocessing reassigntiny fullpipeline"  # pipeline postprocessing
+L3="nopostprocessing reassigntiny"  # pipeline postprocessing
 L4="kmers4 contig2vec4 kmers110011 ind15 kmers4,contig2vec4,contig2vec6,cov_gattaca31,kmers110011,ind15"  # models
 
 # generate list of commands to run and folders
