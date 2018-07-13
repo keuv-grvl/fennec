@@ -233,16 +233,20 @@ class DNASequenceBank(dict):
         append: bool (default: False)
             Append sequences if the output file already exists.
         """
-        import re
-        import gzip
+        import os, re, gzip
 
         if not self.fastafile:
             raise Exception("No file loaded")
 
-        tmpnameparts = self.fastafile.split(".")
+        if os.path.isdir(os.path.dirname(self.fastafile)):
+            tmpnameparts = self.fastafile.split(".")
+        else:
+            tmpnameparts = os.path.basename(self.fastafile).split(".")
+
         tmpnameparts.append(tmpnameparts[-1])
         tmpnameparts[-2] = f"l{self.min_length}c{self.chunk_size}o{self.overlap}"
         path = ".".join(tmpnameparts)
+
         if compress:
             path += ".gz"
 
@@ -391,7 +395,7 @@ class DNASequenceBank(dict):
     @staticmethod
     def read_hdf(path):
         """
-        Read HDF5 file to load DNASequenceBank data (squences and must-link matrix)
+        Read HDF5 file to load DNASequenceBank data (sequences and must-link matrix)
 
         Parameter:
         ----------
