@@ -15,7 +15,6 @@ from matplotlib import pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 from pathlib import Path
 from scipy.spatial.distance import pdist
-from sklearn import preprocessing
 
 import fennec
 from fennec._utils import (
@@ -36,6 +35,8 @@ from fennec._utils import (
 if os.environ["CONDA_DEFAULT_ENV"] != "fennec2-dev":
     raise Exception("Not in correct conda environment")
 
+os.environ["OPENBLAS_NUM_THREADS"] = "16"
+os.environ["MKL_NUM_THREADS"] = "16"
 
 # -- functions in development ---------------------------------------------------
 def _nonredondant_pairwise_index(x):
