@@ -1108,17 +1108,17 @@ class SequenceCoverageModel(BaseEstimator, TransformerMixin):
 
         data = pd.DataFrame(index=list(X.keys()))
         i = 0
-        for file, ext in self.abdfiles.items():
+        for filepath, ext in self.abdfiles.items():
             if ext not in self._available_format:
-                print("Skipping '%s': format '%s' is not supported" % (file, ext))
+                print("Skipping '%s': format '%s' is not supported" % (filepath, ext))
                 continue
             if ext == "CSV":
-                tmp = pd.read_csv(file, header=None)
+                tmp = pd.read_csv(filepath, header=None)
                 tmp.columns = (self.prefix + str(i),)
                 tmp.index = X.keys()
                 data = data.join(tmp, how="outer")
             elif ext == "TSV":
-                tmp = pd.read_csv(file, index_col=0, sep="\t", columns=None)
+                tmp = pd.read_csv(filepath, index_col=0, sep="\t", columns=None)
                 tmp.columns = (self.prefix + str(i),)
                 tmp.index = X.keys()
                 data = data.join(tmp, how="outer")
@@ -1130,11 +1130,11 @@ class SequenceCoverageModel(BaseEstimator, TransformerMixin):
             else:
                 raise ValueError(f"Do not know what to do with format {ext}")
             # elif ext == "SAM":
-            #     self.data = self._get_coverage_from_sam(file)
+            #     self.data = self._get_coverage_from_sam(filepath)
             # elif ext == "BAM":
-            #     self.data = self._get_coverage_from_bam(file)
+            #     self.data = self._get_coverage_from_bam(filepath)
             # elif ext == "FASTA":
-            #     self.data = self._map_fasta(file, self.ref_contigs)
+            #     self.data = self._map_fasta(filepath, self.ref_contigs)
             i += 1
 
         return data

@@ -39,7 +39,7 @@ print(f"== Processing '{fastafile}' ==")
 
 # -- variable definitions
 h5file = fastafile.replace(".fasta", f".l{min_length}c{chunk_size}o{overlap}.h5")
-covfile = fastafile.replace(".fasta", ".cov")
+covfile = fastafile.replace(".fasta", ".csv")
 force_gc = True
 
 # -- load sequences
@@ -73,7 +73,7 @@ models_definitions = {
 # -- Get coverage using GATTACA (Popic et al, 2017, doi: 10.1101/130997)
 if os.access("./bin/gattaca", os.X_OK) and not os.path.exists(covfile):
     fastafile = seqdb.to_fasta()
-    covfile = fastafile.replace(".fasta", ".cov")
+    covfile = fastafile.replace(".fasta", ".csv")
 
     print(f"[INFO] Indexing {fastafile}")
     _ = subprocess.check_output(["./bin/gattaca", "index", "-k", "31", "-i", fastafile])
@@ -99,11 +99,10 @@ if os.access("./bin/gattaca", os.X_OK) and not os.path.exists(covfile):
     )
 
 # -- list models to apply
-with h5py.File(h5file, "r") as hf:
-    try:
-        available_features = set(hf["rawmodel"].keys())
-    except:
-        available_features = set()
+try:
+    available_features = fennec._utils.list_models(h5file)
+except:
+    available_features = set()
 
 models_to_apply = set(models_definitions.keys()).difference(available_features)
 print(
@@ -114,8 +113,6 @@ print(
 for model in models_to_apply:
     print(f" ø {model}")
     X = models_definitions[model].fit_transform(seqdb)
-    # if model.startswith("kmers"):  # if kmer count
-    #     X = X.astype(int)
     print(f"   shape: {X.shape}")
     print(f"   saving to: {h5file}")
     X.to_hdf(h5file, f"rawmodel/{model}")

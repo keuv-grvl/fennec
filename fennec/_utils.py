@@ -264,15 +264,14 @@ def myKernelPCA(
     X_kpca: numpy.ndarray
 
     """
-    import numpy as np
-    import pandas as pd
-
     assert (
         0.0 < inertia <= 1.0
     ), f"Must be: 0.0 < inertia <= 1.0 (got inertia={inertia})"
 
-    assert 0.0 < t <= 1.0, f"Must be: 0.0 < inertia <= 1.0 (got inertia={inertia})"
+    assert 0.0 < t <= 1.0, f"Must be: 0.0 < t <= 1.0 (got t={t})"
 
+    import numpy as np
+    import pandas as pd
     from scipy.stats import zscore
     from sklearn.decomposition import KernelPCA
 
@@ -329,14 +328,13 @@ def merge_models(models, index, kpca_params={"n_jobs": 1, "verbose": 0}):
     for i, d in models.items():
         if kpca_params["verbose"] >= 1:
             print(f"[INFO] Embedding {i}")
-
         d = d.reindex(index)
         kmodels[i] = myKernelPCA(d, **kpca_params)
 
     # - concatenate all kernelmodels
     D = pd.concat(list(kmodels.values()), ignore_index=True, axis=1)
     D.as_matrix().mean(), D.as_matrix().std()  # should be almost 0 and 1 resp.
-    samplesize = min(max(len(D) // 4, 3333), len(D))
+    samplesize = min(max(int(len(D) * kpca_params["t"]), 3333), len(D))
 
     if kpca_params["verbose"] >= 1:
         print(
@@ -408,7 +406,7 @@ def run_vbgmm(
     min_length,
     n,
     seed=None,
-    maxiter=500,
+    maxiter=600,
     epsilon=1e-4,
     init_type="kmeans",
     verbose=0,
@@ -614,6 +612,7 @@ def extract_cluster_silhouette(
     from sklearn.metrics import silhouette_samples
 
     validatedclus = {}
+
     # -- silhouette analysis
     silsamp = silhouette_samples(D, curated_vbgmm_clus, metric="cosine")
 
@@ -624,8 +623,6 @@ def extract_cluster_silhouette(
     CLUS = pd.DataFrame(data=list(zip(curated_vbgmm_clus, silsamp)), index=D.index)
     CLUS.columns = ("cluster", "silhouette")
 
-    # x = curated_vbgmm_clus
-    # g = silsamp
     # - group sequence by cluster ID
     nbseq = Counter(curated_vbgmm_clus)
     d = []
@@ -658,8 +655,10 @@ def extract_cluster_silhouette(
         # plt.show()
         pdf.savefig()
         plt.close()
+
     remaining_ids = [x for x in D.index if not x in treated_ids]
     color = []
+
     for i in D.index:
         if i in remaining_ids:
             color.append(False)
