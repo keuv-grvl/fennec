@@ -300,7 +300,7 @@ def myKernelPCA(
     return pd.DataFrame(X_kpca, index=X.index)
 
 
-def merge_models(models, index, kpca_params={"n_jobs": 1, "verbose": 0}):
+def merge_models(models, index, pca_inertia=0.9999, kpca_params={"n_jobs": 1, "verbose": 0}):
     """
     Merge mutliple DNA sequence models. First, each model is processed using
     myKernelPCA with `kpca_params`, then they are concatenated.
@@ -346,7 +346,7 @@ def merge_models(models, index, kpca_params={"n_jobs": 1, "verbose": 0}):
 
     try:
         # - Pick principal components (99.99% of inertia) to discard "duplicate" attributes between models
-        pca = PCA(0.9999)
+        pca = PCA(pca_inertia)
         D_pca = pca.fit(D.sample(samplesize)).transform(D)
         _, n_comp = D_pca.shape  # may raise an Exception
     except Exception as ee:
