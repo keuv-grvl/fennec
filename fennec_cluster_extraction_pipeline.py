@@ -151,7 +151,7 @@ if isinteractive():  # debug args if script is run in python shell
         "S",
         "auto",
         "mustlink",
-        "fullpipeline",
+        "reassigntiny",
         # "contig2vec4",
         "kmers4,contig2vec4,contig2vec6,cov_gattaca31,kmers110011",  # kmers5,
     )
