@@ -86,25 +86,28 @@ class DNASequenceBank(dict):
             ),
         )
 
-    def _chunks(self, s, n, o, min_len):
+    def _chunks(self, s):
         """
-        Returns `n`-sized chunks from DNA sequence `s` with given overlap `o`
-        between the chunks. If `n` is 0 or less, do not split `s`.
+        Returns `self.chunk_size`-long chunks from DNA sequence `s` with given overlap
+        `self.overlap_` between the chunks. If `self.chunk_size` is 0 or less, do not
+        split `s`. If the last chunk is shorter than `self.min_length`, it is merged
+        with the previous chunk.
         """
         chunks = []
-        if n <= 0:
+        if self.chunk_size <= 0:
             chunks.append(s)
-        elif len(s) <= n:
+        elif len(s) <= self.chunk_size:
             chunks.append(s)
         else:
             i = 0
             while i < len(s):
-                chunks.append(s[i : i + n])
+                chunks.append(s[i : i + self.chunk_size])
                 # i, i + n, s[i : i + n]
-                i += n
+                i += self.chunk_size
                 if i < len(s):
-                    i -= o
-            if len(chunks[-1]) < min_len:
+                    i -= self.overlap_
+            # merge last chunck if shorter than `min_length`
+            if len(chunks[-1]) < self.min_length:
                 chunks[-2] += chunks[-1]
                 del chunks[-1]
         return chunks
@@ -154,13 +157,10 @@ class DNASequenceBank(dict):
                 continue
 
             i += 1
-            # merge last chunck if shorter than `min_length`
-            merge_last = len(s) % self.chunk_size < self.min_length
+
             tmpML = set()
 
-            for j, split_seq in enumerate(
-                self._chunks(str(s), self.chunk_size, self.overlap_, merge_last)
-            ):
+            for j, split_seq in enumerate(self._chunks(str(s))):
                 fid = f"{s.metadata['id']}__{j}"
                 tmpML.add(fid)
                 self[fid] = self._patterns[self.mode].sub("N", str(split_seq))
