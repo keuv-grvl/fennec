@@ -20,7 +20,7 @@ N_RTHREADS=24 pip install .
 ```python
 import os, fennec
 
-fastafile = '/path/to/file.fasta'
+fastafile = '/path/to/file.fasta'  # your contigs
 h5file = '/path/to/file.h5'  # every data will be stored here
 
 # load sequences
@@ -33,18 +33,16 @@ else:
 
 # define models
 models_to_apply = {
-    'raw_kmers4':       fennec.MaskedKmerModel(mask="1111", n_jobs=160, verbose=3),
-    'raw_kmers110011':  fennec.MaskedKmerModel(mask="110011", n_jobs=160, verbose=3),
-    'raw_ind15':        fennec.InterNucleotideDistanceModel(K=15, n_jobs=160, verbose=2),
-    'raw_contig2vec4':  fennec.Contig2VecModel(n_jobs=160, verbose=2)
+    'raw_kmers4':       fennec.MaskedKmerModel(mask="1111"),
+    'raw_kmers110011':  fennec.MaskedKmerModel(mask="110011"),
+    'raw_ind15':        fennec.InterNucleotideDistanceModel(K=15),
+    'raw_contig2vec4':  fennec.Contig2VecModel(k=4, modelfile='urq')
 }
 
 # apply models
 for model in models_to_apply.keys():
-    print(f" ø {model}")
+    print(f" - applying {model}")
     X = models_to_apply[model].fit_transform(seqdb)
-    if model.startswith("raw_kmers"):  # if kmer count
-        X = X.astype(int)
     print(f"{model} loaded (shape={X.shape})")
     X.to_hdf(h5file, model)
 ```
@@ -52,6 +50,11 @@ for model in models_to_apply.keys():
 ## Dependencies
 
 The Conda environment is provided.
+
+```bash
+conda env create --name fennec-env --file conda-env.yml
+source activate fennec-env
+```
 
 ### System dependencies
 
