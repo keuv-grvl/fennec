@@ -45,6 +45,27 @@ for model in models_to_apply.keys():
     X = models_to_apply[model].fit_transform(seqdb)
     print(f"{model} loaded (shape={X.shape})")
     X.to_hdf(h5file, model)
+
+# load model from HDF5 file
+raw_models, id_list, mustlink_mat = load_models(h5file, wanted_models)
+
+# print number of dimension per model
+print([(i, d.shape[1]) for i, d in raw_models.items()])
+
+# merge models
+kpca_params = {
+    "inertia": 0.85,  # kernel PCA inertia to keep
+    "n_jobs": 8,  # number of jobs
+    "verbose": 3,  # verbosity level
+    "t": 0.33  # proportion of data to be sampled for training
+}
+
+D, pca_components, pca_explained_variance_ratio, n_comp = merge_models(
+    raw_models, id_list, kpca_params
+)
+
+# first component origins
+pcacomp_to_model(D[0], raw_models, 0, outfile="pca_components_origin_comp0.csv")
 ```
 
 ## Dependencies

@@ -175,6 +175,7 @@ def pcacomp_to_model(Pcomp, models, n, outfile=None):
         f = open(outfile, "a")
     else:
         f = sys.stdout
+
     print(",".join(["#iter,model,modelIdx,PearsonCoeff,PearsonPval,absCoeff"]), file=f)
     for m, dd in models.items():
         d = dd.copy().reindex(Pcomp.index)
@@ -299,7 +300,9 @@ def myKernelPCA(
     return pd.DataFrame(X_kpca, index=X.index)
 
 
-def merge_models(models, index, pca_inertia=0.9999, kpca_params={"n_jobs": 1, "verbose": 0}):
+def merge_models(
+    models, index, pca_inertia=0.9999, kpca_params={"n_jobs": 1, "verbose": 0}
+):
     """
     Merge mutliple DNA sequence models. First, each model is processed using
     myKernelPCA with `kpca_params`, then they are concatenated.
