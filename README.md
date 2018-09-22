@@ -25,18 +25,20 @@ h5file = '/path/to/file.h5'  # every data will be stored here
 
 # load sequences
 if os.path.exists(h5file):
+    # the HDF5 file already exists, load data from it
     seqdb = fennec.DNASequenceBank.read_hdf(h5file)
 else:
-    seqdb = fennec.DNASequenceBank(min_lenght=1000, chunk_size=10000, verbose=2)
+    # otherwise, parse the FASTA file
+    seqdb = fennec.DNASequenceBank(min_length=1000, chunk_size=10000, overlap=0, verbose=2)
     seqdb.read_fasta(fastafile)
     seqdb.to_hdf(h5file)
 
 # define models
 models_to_apply = {
-    'raw_kmers4':       fennec.MaskedKmerModel(mask="1111"),
-    'raw_kmers110011':  fennec.MaskedKmerModel(mask="110011"),
-    'raw_ind15':        fennec.InterNucleotideDistanceModel(K=15),
-    'raw_contig2vec4':  fennec.Contig2VecModel(k=4, modelfile='urq')
+    'kmers4':       fennec.MaskedKmerModel(mask="1111"),
+    'kmers110011':  fennec.MaskedKmerModel(mask="110011"),
+    'ind15':        fennec.InterNucleotideDistanceModel(K=15),
+    'contig2vec4':  fennec.Contig2VecModel(k=4, modelfile='urq')
 }
 
 # apply models
@@ -55,9 +57,9 @@ print([(i, d.shape[1]) for i, d in raw_models.items()])
 # merge models
 kpca_params = {
     "inertia": 0.85,  # kernel PCA inertia to keep
-    "n_jobs": 8,  # number of jobs
-    "verbose": 3,  # verbosity level
-    "t": 0.33  # proportion of data to be sampled for training
+    "n_jobs": 8,      # number of jobs
+    "verbose": 3,     # verbosity level
+    "t": 0.33         # proportion of data to be sampled for training
 }
 
 D, pca_components, pca_explained_variance_ratio, n_comp = merge_models(
@@ -93,6 +95,6 @@ source activate fennec-env
 
 ### External software
 
-- Prodigal
-- FragGeneScan
+- [Prodigal](https://github.com/hyattpd/Prodigal)
+- [FragGeneScan](https://sourceforge.net/projects/fraggenescan/)
 - [MetaGeneAnnotator](http://metagene.cb.k.u-tokyo.ac.jp/metagene/mga_x86_64.tar.gz)
