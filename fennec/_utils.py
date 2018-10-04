@@ -277,24 +277,24 @@ def myKernelPCA(
     from sklearn.decomposition import KernelPCA
 
     if verbose:
-        print(f"[INFO] fitting KernelPCA using {t * 100}% of the data")
+        print(f"[INFO]   fitting KernelPCA using {t * 100}% of the data")
 
     kpca = KernelPCA(kernel=kernel, n_jobs=n_jobs, copy_X=False)
     kpca.fit(X.sample(int(len(X) * t)))
 
     if verbose:
-        print(f"[INFO] filtering to keep {100 * inertia}% of inertia")
+        print(f"[INFO]   filtering to keep {100 * inertia}% of inertia")
 
     explained_variance_ratio_ = (kpca.lambdas_ / kpca.lambdas_.sum()).cumsum()
     nb_tokeep = max(np.count_nonzero(explained_variance_ratio_ < inertia), min_comp)
 
     if verbose:
-        print(f"[INFO] will keep {nb_tokeep} components")
+        print(f"[INFO]   will keep {nb_tokeep} components")
 
     X_kpca = kpca.transform(X)[:, 0:nb_tokeep]
 
     if verbose:
-        print(f"[INFO] scaling with zscore")
+        print(f"[INFO]   scaling with zscore")
 
     X_kpca = zscore(X_kpca)
     return pd.DataFrame(X_kpca, index=X.index)
@@ -330,7 +330,7 @@ def merge_models(
 
     for i, d in models.items():
         if kpca_params["verbose"] >= 1:
-            print(f"[INFO] Embedding {i}")
+            print(f"[INFO] Embedding {i} ({d.shape[1]} attributes)")
         d = d.reindex(index)
         kmodels[i] = myKernelPCA(d, **kpca_params)
 
