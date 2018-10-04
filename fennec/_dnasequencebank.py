@@ -1,7 +1,7 @@
 from ._utils import _print_progressbar
+from collections import OrderedDict
 
-
-class DNASequenceBank(dict):
+class DNASequenceBank(OrderedDict):
     """
     Load a FASTA file, chunks long sequences and store chunks as dict
     {chunk_ID: chunk} while tracking must-link relationships between chunks.
