@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-# source activate fennec2-dev
-
 import gc
 import os
 import subprocess
@@ -10,9 +8,6 @@ import sys
 import h5py
 
 import fennec
-
-if os.environ["CONDA_DEFAULT_ENV"] != "fennec2-dev":
-    raise Warning("Not in correct conda environment")
 
 if not fennec._utils.isinteractive():
     try:
@@ -28,7 +23,7 @@ if not fennec._utils.isinteractive():
         )
         sys.exit(1)
 else:
-    fastafile = "XS.all.fna"
+    fastafile = "DATA/S.Scaffolds.fasta"
     min_length = 1000
     chunk_size = 10000
     overlap = 0
@@ -38,8 +33,8 @@ else:
 print(f"== Processing '{fastafile}' ==")
 
 # -- variable definitions
-h5file = fastafile.replace(".fna", f".l{min_length}c{chunk_size}o{overlap}.h5")
-covfile = fastafile.replace(".fna", ".csv")
+h5file = fastafile.replace(".fasta", f".l{min_length}c{chunk_size}o{overlap}.h5")
+covfile = fastafile.replace(".fasta", ".csv")
 force_gc = True
 
 # -- load sequences
@@ -59,7 +54,9 @@ print(f"DNASequenceBank has {len(seqdb)} sequences.")
 models_definitions = {
     # "label": fennec.xxxModel(param)
     "kmers110011": fennec.MaskedKmerModel(mask="110011", n_jobs=n_jobs, verbose=3),
-    "kmers11000100011": fennec.MaskedKmerModel(mask="11000100011", n_jobs=n_jobs, verbose=3),
+    "kmers11000100011": fennec.MaskedKmerModel(
+        mask="11000100011", n_jobs=n_jobs, verbose=3
+    ),
     "kmers1001001": fennec.MaskedKmerModel(mask="1001001", n_jobs=n_jobs, verbose=3),
     "kmers3": fennec.MaskedKmerModel(mask="111", n_jobs=n_jobs, verbose=3),
     "kmers4": fennec.MaskedKmerModel(mask="1111", n_jobs=n_jobs, verbose=3),
@@ -70,17 +67,24 @@ models_definitions = {
 }
 
 # -- Get coverage using GATTACA (Popic et al, 2017, doi: 10.1101/130997)
-if os.access("./bin/gattaca", os.X_OK) and not os.path.exists(covfile):
+
+# - Delete one of the model
+# try:
+#     with h5py.File(h5file) as h:
+#         del h['rawmodel']['cov_gattaca31']
+# except:
+#     pass
+
+gattaca_bin = "./bin/gattaca"
+
+if os.access(gattaca_bin, os.X_OK) and not os.path.exists(covfile):
     fastafile = seqdb.to_fasta()
-    covfile = fastafile.replace(".fna", ".csv")
-
     print(f"[INFO] Indexing {fastafile}")
-    _ = subprocess.check_output(["/home/kgravouil/fennec/fennec/_gattaca/gattaca", "index", "-k", "31", "-i", fastafile])
-
+    _ = subprocess.check_output([gattaca_bin, "index", "-k", "31", "-i", fastafile])
     print(f"[INFO] Running GATTACA on {fastafile}")
     _ = subprocess.check_output(
         [
-            "/home/kgravouil/fennec/fennec/_gattaca/gattaca",
+            gattaca_bin,
             "lookup",
             "-c",
             fastafile,
@@ -91,7 +95,6 @@ if os.access("./bin/gattaca", os.X_OK) and not os.path.exists(covfile):
             "-m",  # median coverage of each contig in each sample (recommended)
         ]
     )
-
     print(f"[INFO] Adding SequenceCoverageModel to the model list")
     models_definitions["cov_gattaca31"] = fennec.SequenceCoverageModel(
         (covfile,), verbose=3
