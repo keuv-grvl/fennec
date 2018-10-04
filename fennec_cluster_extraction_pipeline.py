@@ -124,14 +124,13 @@ def extract_unlink_clusters(curated_vbgmm_clus, D_ml, tol=0.9, verbose=True):
 
     os.makedirs(f"{vbgmm_input_dir}/mustlink_info/", exist_ok=True)
     cnt_ml = get_nb_mustlink_per_cluster(
-        curated_vbgmm_clus, D_ml, verbose=verbose, n_jobs=8
+        curated_vbgmm_clus, D_ml, verbose=verbose, n_jobs=128
     )
     perc_ml = np.diag(cnt_ml) / cnt_ml.sum()
     pd.concat([cnt_ml, perc_ml])
     cnt_ml.to_csv(f"{vbgmm_input_dir}/mustlink_info/iter{n}_nb_mustlink.csv")
     clustokeep = cnt_ml.index[perc_ml >= tol]
     remaining_ids = cnt_ml.index[perc_ml < tol]
-
     # return values
     # validated clusters
     retA = curated_vbgmm_clus[np.isin(curated_vbgmm_clus, clustokeep)]
@@ -148,13 +147,14 @@ def extract_unlink_clusters(curated_vbgmm_clus, D_ml, tol=0.9, verbose=True):
 
 if isinteractive():  # debug args if script is run in python shell
     h5file, label, overlap, init_type, mode, models_str = (
-        "DATA/S.completedata.l1000c10000oauto.h5",
+        "DATA/S.completedata.l1000c10000o0.h5",
         "S",
-        "auto",
+        "0",
         "mustlink",
-        "fullpipeline",
+        "reassigntiny",
         # "contig2vec4",
-        "kmers4,contig2vec4,contig2vec6,cov_gattaca31,kmers110011",  # kmers5,
+        # "kmers4,contig2vec4,contig2vec6,ind15",  # kmers5,
+        "contig2vec4,contig2vec6,cov_gattaca31,ind15,kmers1001001,kmers110011,kmers3,kmers4",
     )
 else:
     if len(sys.argv) != 7:
@@ -175,12 +175,12 @@ assert mode in ("nopostprocessing", "reassigntiny"), "mode is incorrect, got {}"
 # -- user input
 # vbgmm_input_dir = f"run.{label}.output/"
 vbgmm_input_dir = "/".join(
-    ["FENNEC_RESULTS", label, overlap, init_type, mode, models_str, ""]
+    ["NEW_FENNEC_RESULTS", label, overlap, init_type, mode, models_str, ""]
 )
 
 min_length = 1000  # minimum sequence length
-max_cluster = 600  # maximum number of cluster to extract
-max_iter = 25  # maximum number of iteration
+max_cluster = 100  # maximum number of cluster to extract
+max_iter = 10  # maximum number of iteration
 
 # -- variables
 wanted_models = models_str.split(",")
@@ -200,9 +200,9 @@ print([(i, d.shape[1]) for i, d in raw_models.items()])
 # -- set some parameters
 kpca_params = {
     "inertia": 0.85,
-    "n_jobs": 8,
+    "n_jobs": 128,
     "verbose": 3,
-    "t": 0.33,
+    "t": 0.25,
 }  # see: help(myKernelPCA)
 min_nb_seq = 50  # default value, will be updated later
 max_pca_dim = min(250, sum([d.shape[1] for d in raw_models.values()]) // 3)
@@ -248,7 +248,7 @@ while True:
     # -- select features
     print("[INFO] Merging models")
     D, pca_components, pca_explained_variance_ratio, n_comp = merge_models(
-        raw_models, remaining_ids, kpca_params
+        raw_models, remaining_ids, pca_inertia=0.99, kpca_params=kpca_params
     )
     print("[INFO] Merging models produced %d components" % n_comp)
 
@@ -274,7 +274,7 @@ while True:
         break
 
     # -- which models are used?
-    for c in range(min(20, n_comp)):  # 20 first components
+    for c in range(min(10, n_comp)):  # 10 first components
         pcacomp_to_model(
             D[c],
             raw_models,
@@ -299,7 +299,7 @@ while True:
         max_cluster,
         min_length,
         n,
-        # seed=666,
+        seed=666,
         init_type=init_type,
         epsilon=1e-2,
         verbose=2,
@@ -327,10 +327,10 @@ while True:
 
     # count must link relationships between clusters
     cnt_ml = get_nb_mustlink_per_cluster(
-        curated_vbgmm_clus, D_ml, verbose=True, n_jobs=8
+        curated_vbgmm_clus, D_ml, verbose=True, n_jobs=128
     )
     perc_ml = np.diag(cnt_ml) / cnt_ml.sum()
-    pd.concat([cnt_ml, perc_ml])
+    cnt_ml["PERC"] = perc_ml
     cnt_ml.to_csv(f"{vbgmm_input_dir}/mustlink_info/iter{n}_nb_mustlink.csv")
 
     # - extract cluster with high enough silhouette scores
@@ -343,12 +343,12 @@ while True:
         draw_2D_plot(
             D,
             n,
-            labels=vbgmm_clus,
+            # labels=vbgmm_clus,
             title="raw_vbgmm_clus",
             n_iter=1200,
             force=True,
             verbose=3,
-            n_jobs=8,  # os.cpu_count(),
+            n_jobs=128,  # os.cpu_count(),
         )
         plt.savefig(f"{vbgmm_input_dir}/iter{n}.tsne.rawclus.png")
         draw_2D_plot(
@@ -359,9 +359,10 @@ while True:
             n_iter=1200,
             force=False,
             verbose=3,
-            n_jobs=8,  # os.cpu_count(),
+            n_jobs=128,  # os.cpu_count(),
         )
         plt.savefig(f"{vbgmm_input_dir}/iter{n}.tsne.curatedclus.png")
+        os.rename("tmp.tsne.data.csv", f"{vbgmm_input_dir}/iter{n}.tsne.points.csv")
 
     CLUS = pd.DataFrame(
         data=list(curated_vbgmm_clus), index=D.index, columns=("cluster",)
