@@ -225,7 +225,7 @@ def load_models(h5file, models):
 
 
 def myKernelPCA(
-    X, inertia, kernel="cosine", index=None, t=0.2, min_comp=3, n_jobs=1, verbose=False
+    X, inertia=0.85, kernel="cosine", index=None, t=0.2, min_comp=3, n_jobs=1, verbose=False
 ):
     """
     Perform KernelPCA on `X` then keep only `inertia`.
