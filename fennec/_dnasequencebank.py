@@ -86,7 +86,7 @@ class DNASequenceBank(OrderedDict):
             ),
         )
 
-    def _chunks(self, s):
+    def _fennec_chunks(self, s):
         """
         Returns `self.chunk_size`-long chunks from DNA sequence `s` with given overlap
         `self.overlap_` between the chunks. If `self.chunk_size` is 0 or less, do not
@@ -111,6 +111,39 @@ class DNASequenceBank(OrderedDict):
                 chunks[-2] += chunks[-1]
                 del chunks[-1]
         return chunks
+
+
+    def _concoct_chunks(self, s, merge_last=True):
+        """
+        Source: https://github.com/BinPro/CONCOCT/blob/master/scripts/cut_up_fasta.py
+        """
+        chunks = []
+        if self.chunk_size <= 0:
+            chunks.append(s)
+        elif len(s) <= self.chunk_size:
+            chunks.append(s)
+        else:
+            i = 0
+            while i < len(s):
+                chunks.append(s[i : i + self.chunk_size])
+                i += self.chunk_size - self.overlap_
+            # merge last chunk
+            if merge_last:
+                chunks[-2] += chunks[-1]
+                del chunks[-1]
+        return chunks
+
+
+    def _chunks(self, s):
+        """
+        Returns `self.chunk_size`-long chunks from DNA sequence `s` with given overlap
+        `self.overlap_` between the chunks. If `self.chunk_size` is 0 or less, do not
+        split `s`. If the last chunk is shorter than `self.min_length`, it is merged
+        with the previous chunk.
+        """
+        return list(self._concoct_chunks(s))
+
+
 
     def read_fasta(self, path, format="fasta"):
         """
@@ -159,11 +192,18 @@ class DNASequenceBank(OrderedDict):
             i += 1
 
             tmpML = set()
-
-            for j, split_seq in enumerate(self._chunks(str(s))):
-                fid = f"{s.metadata['id']}__{j}"
-                tmpML.add(fid)
-                self[fid] = self._patterns[self.mode].sub("N", str(split_seq))
+            chnk = self._chunks(str(s))
+            
+            if len(chnk) == 1:
+              fid = f"{s.metadata['id']}"
+              tmpML.add(fid)
+              self[fid] = self._patterns[self.mode].sub("N", str(chnk[0]))
+            else:
+              for j, split_seq in enumerate(chnk):
+                  if len(split_seq) > 1:
+                    fid = f"{s.metadata['id']}.{j}"
+                  tmpML.add(fid)
+                  self[fid] = self._patterns[self.mode].sub("N", str(split_seq))
 
             mustlink.append(tmpML)
 
