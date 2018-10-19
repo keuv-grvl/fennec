@@ -129,8 +129,11 @@ class DNASequenceBank(OrderedDict):
                 i += self.chunk_size - self.overlap_
             # merge last chunk
             if merge_last:
-                chunks[-2] += chunks[-1]
-                del chunks[-1]
+                if (len(chunks[-1]) == self.chunk_size):  # bricolage
+                    pass
+                else:
+                    chunks[-2] += chunks[-1]
+                    del chunks[-1]
         return chunks
 
 
@@ -193,7 +196,7 @@ class DNASequenceBank(OrderedDict):
 
             tmpML = set()
             chnk = self._chunks(str(s))
-            
+
             if len(chnk) == 1:
               fid = f"{s.metadata['id']}"
               tmpML.add(fid)
@@ -315,7 +318,8 @@ class DNASequenceBank(OrderedDict):
                 _print_progressbar(i, len(ids), msg=sid)
 
             _ = f.write(">" + sid + "\n")
-            _ = f.write(re.sub(r"(.{,80})", r"\1\n", seq))  # 80 nt per line
+            # _ = f.write(re.sub(r"(.{,80})", r"\1\n", seq))  # 80 nt per line
+            _ = f.write(seq + "\n")  # 80 nt per line
 
         f.close()
 
