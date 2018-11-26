@@ -1,5 +1,21 @@
 # fennec
 
+:warning: **Note: this project will be renamed soon** :warning:
+
+`fennec` unsupervisedly integrates multiple metagenomic DNA sequence representations without external data for machine learning application built on top of scikit-learn.
+
+Available sequence representations are:
+- [x] canonical k-mer count
+- [x] canonical spaced-seed count
+- [x] average sequence coverage
+- [x] coding density
+- [x] inter-nucleotide distance profiles
+- [x] Contig2Vec
+- [ ] codon usage bias
+
+This repo also contains a [demo application](https://github.com/keuv-grvl/fennec/blob/master/fennec_cluster_extraction_pipeline.py) of `fennec`.
+
+
 ## Installation
 
 ```bash
