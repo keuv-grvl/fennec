@@ -562,11 +562,11 @@ def reassign_tiny_cluster_mustlink(vbgmm_clus, D_ml, verbose=False):
         elif False:  # - step 4: reassign according to proximity with cluster centers
             pass
             ### REASSIGN A SEQUENCE TO THE CLOSEST CLUSTER
-            # Does word because:
+            # Does not work because:
             # - sequence are already far from other clusters
             # - the KDTree does not accept cosine distance!!
-            # - very few sequences were reassigned using this method during tests on S (3/15)
-            # -
+            # - very few sequences were reassigned using this method during tests on S dataset (3/15)
+            # 
             # from sklearn.neighbors import KDTree
             # kdt = KDTree(D_pca[res != -1])
             # seq_to_reassign = np.where(res == -1)[0]
