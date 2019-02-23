@@ -84,6 +84,11 @@ D, pca_components, pca_explained_variance_ratio, n_comp = merge_models(
 
 # first component origins
 pcacomp_to_model(D[0], raw_models, 0, outfile="pca_components_origin_comp0.csv")
+
+from sklearn.cluster import Kmeans
+km = Kmeans(n_clusters=5)
+km.fit(D)
+D_clusters = km.predict(D)
 ```
 
 ## Dependencies
